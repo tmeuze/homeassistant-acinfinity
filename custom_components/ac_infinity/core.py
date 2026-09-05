@@ -308,13 +308,20 @@ class ACInfinityDevice:
         self._device_port = device_json[DevicePropertyKey.PORT]
         self._device_name = device_json[DevicePropertyKey.NAME]
 
-        self._device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{controller.controller_id}_{self._device_port}")},
-            name=f"{controller.controller_name} {self.device_name}",
-            manufacturer=MANUFACTURER,
-            via_device_id=controller.identifier,
-            model="UIS Enabled Device",
-        )
+        # Build device info. For synthetic devices (port_0), don't use via_device_id
+        # because the parent device may not be registered yet in the device registry.
+        device_info_kwargs = {
+            "identifiers": {(DOMAIN, f"{controller.controller_id}_{self._device_port}")},
+            "name": f"{controller.controller_name} {self.device_name}",
+            "manufacturer": MANUFACTURER,
+            "model": "UIS Enabled Device",
+        }
+
+        # Only use via_device_id for real ports (not synthetic port_0)
+        if self._device_port != 0:
+            device_info_kwargs["via_device_id"] = controller.identifier
+
+        self._device_info = DeviceInfo(**device_info_kwargs)
 
     @property
     def controller(self) -> ACInfinityController:
