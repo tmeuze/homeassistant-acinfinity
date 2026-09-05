@@ -66,7 +66,14 @@ class ACInfinityController:
         # Room-to-room fans (e.g. AC-TWT6) have no ports but expose controls at port 0.
         # Create a synthetic device entry to enable control entities.
         if not devices and controller_json.get(ControllerPropertyKey.DEVICE_TYPE) in [33]:  # UIS_ROOM_TO_ROOM_FAN
-            synthetic_device = {DevicePropertyKey.PORT: 0}
+            synthetic_device = {
+                DevicePropertyKey.PORT: 0,
+                DevicePropertyKey.NAME: "Main",
+                DevicePropertyKey.SPEAK: 0,
+                DevicePropertyKey.ONLINE: controller_json[ControllerPropertyKey.ONLINE],
+                DevicePropertyKey.STATE: 0,
+                DevicePropertyKey.REMAINING_TIME: 0,
+            }
             self._devices = [ACInfinityDevice(self, synthetic_device)]
 
         self._device_info = DeviceInfo(
