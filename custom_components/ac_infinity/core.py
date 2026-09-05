@@ -312,7 +312,7 @@ class ACInfinityDevice:
             identifiers={(DOMAIN, f"{controller.controller_id}_{self._device_port}")},
             name=f"{controller.controller_name} {self.device_name}",
             manufacturer=MANUFACTURER,
-            via_device=controller.identifier,
+            via_device_id=controller.identifier,
             model="UIS Enabled Device",
         )
 
