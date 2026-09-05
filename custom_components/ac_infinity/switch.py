@@ -79,6 +79,17 @@ def __get_value_fn_device_control_default(entity: ACInfinityEntity, device: ACIn
     )
 
 
+def __suitable_fn_room_to_room_fan_control(entity: ACInfinityEntity, device: ACInfinityDevice):
+    """Room-to-room fans expose their controls at device port 0 (controller level)"""
+    return (
+        device.controller.is_room_to_room_fan
+        and device.device_port == 0
+        and entity.ac_infinity.get_device_control_exists(
+            device.controller.controller_id, device.device_port, entity.data_key
+        )
+    )
+
+
 def __get_value_fn_device_setting_default(entity: ACInfinityEntity, device: ACInfinityDevice):
     return entity.ac_infinity.get_device_setting(
         device.controller.controller_id, device.device_port, entity.data_key, 0
@@ -268,6 +279,85 @@ DEVICE_DESCRIPTIONS: list[ACInfinityDeviceSwitchEntityDescription] = [
         suitable_fn=__suitable_fn_device_setting_default,
         get_value_fn=__get_value_fn_device_setting_default,
         set_value_fn=__set_value_fn_device_setting_default,
+        at_type_fn=lambda at_type: True
+    ),
+    # Room-to-room fan controls (AC-TWT6, devType 33)
+    ACInfinityDeviceSwitchEntityDescription(
+        key=DeviceControlKey.AUTO_TEMP_HIGH_ENABLED,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=None,
+        translation_key="room_to_room_high_temp_enabled",
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_room_to_room_fan_control,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: True
+    ),
+    ACInfinityDeviceSwitchEntityDescription(
+        key=DeviceControlKey.AUTO_TEMP_LOW_ENABLED,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=None,
+        translation_key="room_to_room_low_temp_enabled",
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_room_to_room_fan_control,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: True
+    ),
+    ACInfinityDeviceSwitchEntityDescription(
+        key=DeviceControlKey.TARGET_TEMP_SWITCH,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=None,
+        translation_key="room_to_room_target_temp_enabled",
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_room_to_room_fan_control,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: True
+    ),
+    ACInfinityDeviceSwitchEntityDescription(
+        key=DeviceControlKey.POWER_STATE,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=None,
+        translation_key="room_to_room_power",
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_room_to_room_fan_control,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: True
+    ),
+    ACInfinityDeviceSwitchEntityDescription(
+        key=AdvancedSettingsKey.BACKLIGHT_SWITCH,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=None,
+        translation_key="room_to_room_backlight",
+        enabled_fn=enabled_fn_setting,
+        suitable_fn=__suitable_fn_room_to_room_fan_control,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: True
+    ),
+    ACInfinityDeviceSwitchEntityDescription(
+        key=AdvancedSettingsKey.KEYTONE_SWITCH,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=None,
+        translation_key="room_to_room_keytone",
+        enabled_fn=enabled_fn_setting,
+        suitable_fn=__suitable_fn_room_to_room_fan_control,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
         at_type_fn=lambda at_type: True
     ),
 ]

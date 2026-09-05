@@ -140,6 +140,17 @@ def __suitable_fn_device_setting_temp_c(entity: ACInfinityEntity, device: ACInfi
     return not device.controller.is_ai_controller and __suitable_fn_device_setting_temp_impl(entity, device, 1)
 
 
+def __suitable_fn_room_to_room_fan_control(entity: ACInfinityEntity, device: ACInfinityDevice):
+    """Room-to-room fans expose their controls at device port 0 (controller level)"""
+    return (
+        device.controller.is_room_to_room_fan
+        and device.device_port == 0
+        and entity.ac_infinity.get_device_control_exists(
+            device.controller.controller_id, device.device_port, entity.data_key
+        )
+    )
+
+
 def __get_value_fn_controller_setting_default(
     entity: ACInfinityEntity, controller: ACInfinityController
 ):
@@ -938,6 +949,119 @@ DEVICE_DESCRIPTIONS: list[ACInfinityDeviceNumberEntityDescription] = [
         suitable_fn=__suitable_fn_device_setting_default,
         get_value_fn=__get_value_fn_device_setting_default,
         set_value_fn=__set_value_fn_device_setting_default,
+        at_type_fn=lambda at_type: True
+    ),
+    # Room-to-room fan controls (AC-TWT6, devType 33)
+    ACInfinityDeviceNumberEntityDescription(
+        key=DeviceControlKey.ON_SPEED,
+        device_class=NumberDeviceClass.POWER_FACTOR,
+        mode=NumberMode.AUTO,
+        native_min_value=0,
+        native_max_value=10,
+        native_step=1,
+        icon=MdiIcon.KNOB,
+        translation_key="room_to_room_fan_speed",
+        native_unit_of_measurement=None,
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_room_to_room_fan_control,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: True
+    ),
+    ACInfinityDeviceNumberEntityDescription(
+        key=DeviceControlKey.AUTO_TEMP_HIGH_TRIGGER,
+        device_class=NumberDeviceClass.TEMPERATURE,
+        mode=NumberMode.BOX,
+        native_min_value=0,
+        native_max_value=40,
+        native_step=1,
+        icon=None,
+        translation_key="room_to_room_high_temp_trigger_c",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_room_to_room_fan_control,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: True
+    ),
+    ACInfinityDeviceNumberEntityDescription(
+        key=DeviceControlKey.AUTO_TEMP_HIGH_TRIGGER_F,
+        device_class=NumberDeviceClass.TEMPERATURE,
+        mode=NumberMode.BOX,
+        native_min_value=32,
+        native_max_value=104,
+        native_step=1,
+        icon=None,
+        translation_key="room_to_room_high_temp_trigger_f",
+        native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_room_to_room_fan_control,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: True
+    ),
+    ACInfinityDeviceNumberEntityDescription(
+        key=DeviceControlKey.AUTO_TEMP_LOW_TRIGGER,
+        device_class=NumberDeviceClass.TEMPERATURE,
+        mode=NumberMode.BOX,
+        native_min_value=0,
+        native_max_value=40,
+        native_step=1,
+        icon=None,
+        translation_key="room_to_room_low_temp_trigger_c",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_room_to_room_fan_control,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: True
+    ),
+    ACInfinityDeviceNumberEntityDescription(
+        key=DeviceControlKey.AUTO_TEMP_LOW_TRIGGER_F,
+        device_class=NumberDeviceClass.TEMPERATURE,
+        mode=NumberMode.BOX,
+        native_min_value=32,
+        native_max_value=104,
+        native_step=1,
+        icon=None,
+        translation_key="room_to_room_low_temp_trigger_f",
+        native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_room_to_room_fan_control,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: True
+    ),
+    ACInfinityDeviceNumberEntityDescription(
+        key=DeviceControlKey.TARGET_TEMP,
+        device_class=NumberDeviceClass.TEMPERATURE,
+        mode=NumberMode.BOX,
+        native_min_value=0,
+        native_max_value=40,
+        native_step=1,
+        icon=None,
+        translation_key="room_to_room_target_temp_c",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_room_to_room_fan_control,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: True
+    ),
+    ACInfinityDeviceNumberEntityDescription(
+        key=DeviceControlKey.TARGET_TEMP_F,
+        device_class=NumberDeviceClass.TEMPERATURE,
+        mode=NumberMode.BOX,
+        native_min_value=32,
+        native_max_value=104,
+        native_step=1,
+        icon=None,
+        translation_key="room_to_room_target_temp_f",
+        native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_room_to_room_fan_control,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
         at_type_fn=lambda at_type: True
     ),
 ]
