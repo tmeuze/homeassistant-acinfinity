@@ -171,11 +171,12 @@ def __get_value_fn_active_mode(entity: ACInfinityEntity, device: ACInfinityDevic
 
 
 def __get_value_fn_room_to_room_mode(entity: ACInfinityEntity, device: ACInfinityDevice):
-    return ROOM_TO_ROOM_MODE_OPTIONS[
-        entity.ac_infinity.get_device_control(
-            device.controller.controller_id, device.device_port, DeviceControlKey.AT_TYPE, RoomToRoomFanMode.MANUAL
-        )
-    ]
+    active_mode = entity.ac_infinity.get_device_control(
+        device.controller.controller_id, device.device_port, DeviceControlKey.AT_TYPE, RoomToRoomFanMode.MANUAL
+    )
+    # Falls back to "Manual" for any atType value we haven't confirmed a label for
+    # (e.g. the transient/unconfirmed 0 state), rather than raising a KeyError.
+    return ROOM_TO_ROOM_MODE_OPTIONS.get(active_mode, ROOM_TO_ROOM_MODE_OPTIONS[RoomToRoomFanMode.MANUAL])
 
 
 def __get_value_fn_dynamic_response_type(
