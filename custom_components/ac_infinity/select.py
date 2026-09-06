@@ -70,6 +70,11 @@ ROOM_TO_ROOM_MODE_OPTIONS = {
 }
 ROOM_TO_ROOM_MODE_OPTIONS_REVERSE = {v: k for k, v in ROOM_TO_ROOM_MODE_OPTIONS.items()}
 
+# Display-only label for when the device reports atType=0 (powered off). Not included
+# in ROOM_TO_ROOM_MODE_OPTIONS/the select's own options list - turning the fan off/on is
+# handled by the dedicated power switch, not this selector.
+ROOM_TO_ROOM_MODE_DISPLAY_LABELS = {**ROOM_TO_ROOM_MODE_OPTIONS, RoomToRoomFanMode.OFF: "Off"}
+
 SETTINGS_MODE_OPTIONS = [
     "Auto",
     "Target",
@@ -174,9 +179,9 @@ def __get_value_fn_room_to_room_mode(entity: ACInfinityEntity, device: ACInfinit
     active_mode = entity.ac_infinity.get_device_control(
         device.controller.controller_id, device.device_port, DeviceControlKey.AT_TYPE, RoomToRoomFanMode.MANUAL
     )
-    # Falls back to "Manual" for any atType value we haven't confirmed a label for
-    # (e.g. the transient/unconfirmed 0 state), rather than raising a KeyError.
-    return ROOM_TO_ROOM_MODE_OPTIONS.get(active_mode, ROOM_TO_ROOM_MODE_OPTIONS[RoomToRoomFanMode.MANUAL])
+    # "Off" (atType=0) is display-only here - falls back to "Manual" for any other
+    # atType value without a confirmed label, rather than raising a KeyError.
+    return ROOM_TO_ROOM_MODE_DISPLAY_LABELS.get(active_mode, ROOM_TO_ROOM_MODE_OPTIONS[RoomToRoomFanMode.MANUAL])
 
 
 def __get_value_fn_dynamic_response_type(
