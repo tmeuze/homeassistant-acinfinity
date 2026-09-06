@@ -314,7 +314,7 @@ class ACInfinityDevice:
             "identifiers": {(DOMAIN, f"{controller.controller_id}_{self._device_port}")},
             "name": f"{controller.controller_name} {self.device_name}",
             "manufacturer": MANUFACTURER,
-            "model": "UIS Enabled Device",
+            "model": "Room to Room Fan (AC-TWT6)" if controller.is_room_to_room_fan else "UIS Enabled Device",
         }
 
         # Only use via_device_id for real ports (not synthetic port_0)
