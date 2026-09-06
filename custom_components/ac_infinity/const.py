@@ -128,6 +128,12 @@ class RoomToRoomFanMode:
     TEMP_TARGET = 2
     TIMER = 3
     AI_DIFFERENTIAL = 4
+    # Observed exactly once during capture, sandwiched momentarily between two
+    # MANUAL (atType=3) transitions while switching modes rapidly in the app -
+    # never confirmed as a real, independently-selectable mode. Included so that
+    # writes to OTHER controls (power, backlight, direction, etc...) don't fail
+    # outright if the device happens to be reporting this as its current atType.
+    UNKNOWN_TRANSIENT = 0
 
 
 # modeAndSettingIdStr values the official app sends for each RoomToRoomFanMode,
@@ -138,6 +144,9 @@ ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR = {
     RoomToRoomFanMode.TEMP_TARGET: "[16,19]",
     RoomToRoomFanMode.TIMER: "[16,21]",
     RoomToRoomFanMode.AI_DIFFERENTIAL: "[16,20]",
+    # Best-effort fallback (see UNKNOWN_TRANSIENT above) - the one time this was
+    # observed, the immediately preceding/following idStr was also "[22]".
+    RoomToRoomFanMode.UNKNOWN_TRANSIENT: "[22]",
 }
 
 
