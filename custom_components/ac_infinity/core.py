@@ -638,12 +638,21 @@ class ACInfinityService:
                     self._device_settings[(controller_id, 0)] = controller_settings_json[DeviceControlKey.DEV_SETTING]
 
                     # Room-to-room fans (e.g. AC-TWT6) have no ports, so the loop below that
-                    # populates _device_controls never runs for them. Their controls (mode,
-                    # fan speed, direction, timer, etc...) live in this same controller-level
-                    # response though, so populate _device_controls for the synthetic port 0
-                    # device here as well.
+                    # populates _device_controls and _device_properties never runs for them.
+                    # Their controls (mode, fan speed, direction, timer, etc...) live in this
+                    # same controller-level response though, so populate both here as well for
+                    # the synthetic port 0 device. _device_properties in particular gates entity
+                    # availability via the ONLINE property check below - without this, every
+                    # room-to-room control entity is permanently unavailable/greyed out.
                     if controller_properties_json.get(ControllerPropertyKey.DEVICE_TYPE) in ROOM_TO_ROOM_FAN_CONTROLLER_TYPES:
                         self._device_controls[(controller_id, 0)] = controller_settings_json
+                        self._device_properties[(controller_id, 0)] = {
+                            DevicePropertyKey.PORT: 0,
+                            DevicePropertyKey.ONLINE: controller_properties_json[ControllerPropertyKey.ONLINE],
+                            DevicePropertyKey.STATE: controller_settings_json.get(DeviceControlKey.DEV_SETTING, {}).get(DeviceControlKey.POWER_STATE, 0),
+                            DevicePropertyKey.SPEAK: controller_settings_json.get(DevicePropertyKey.SPEAK, 0),
+                            DevicePropertyKey.REMAINING_TIME: controller_settings_json.get(DeviceControlKey.SURPLUS, 0),
+                        }
 
                     # controller AI will have a sensor array.
                     if ControllerPropertyKey.SENSORS in controller_properties_json[ControllerPropertyKey.DEVICE_INFO]:
