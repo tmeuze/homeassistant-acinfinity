@@ -19,6 +19,8 @@ from custom_components.ac_infinity.const import (
     SCHEDULE_MIDNIGHT_VALUE,
     AdvancedSettingsKey,
     DeviceControlKey,
+    MdiIcon,
+    RoomToRoomFanMode,
 )
 from custom_components.ac_infinity.core import (
     ACInfinityDataUpdateCoordinator,
@@ -290,46 +292,10 @@ DEVICE_DESCRIPTIONS: list[ACInfinityDeviceSwitchEntityDescription] = [
         set_value_fn=__set_value_fn_device_setting_default,
         at_type_fn=lambda at_type: True
     ),
-    # Room-to-room fan controls (AC-TWT6, devType 33)
-    ACInfinityDeviceSwitchEntityDescription(
-        key=DeviceControlKey.AUTO_TEMP_HIGH_ENABLED,
-        device_class=SwitchDeviceClass.SWITCH,
-        on_value=1,
-        off_value=0,
-        icon=None,
-        translation_key="room_to_room_high_temp_enabled",
-        enabled_fn=enabled_fn_control,
-        suitable_fn=__suitable_fn_room_to_room_fan_control,
-        get_value_fn=__get_value_fn_device_control_default,
-        set_value_fn=__set_value_fn_device_control_default,
-        at_type_fn=lambda at_type: True
-    ),
-    ACInfinityDeviceSwitchEntityDescription(
-        key=DeviceControlKey.AUTO_TEMP_LOW_ENABLED,
-        device_class=SwitchDeviceClass.SWITCH,
-        on_value=1,
-        off_value=0,
-        icon=None,
-        translation_key="room_to_room_low_temp_enabled",
-        enabled_fn=enabled_fn_control,
-        suitable_fn=__suitable_fn_room_to_room_fan_control,
-        get_value_fn=__get_value_fn_device_control_default,
-        set_value_fn=__set_value_fn_device_control_default,
-        at_type_fn=lambda at_type: True
-    ),
-    ACInfinityDeviceSwitchEntityDescription(
-        key=DeviceControlKey.TARGET_TEMP_SWITCH,
-        device_class=SwitchDeviceClass.SWITCH,
-        on_value=1,
-        off_value=0,
-        icon=None,
-        translation_key="room_to_room_target_temp_enabled",
-        enabled_fn=enabled_fn_control,
-        suitable_fn=__suitable_fn_room_to_room_fan_control,
-        get_value_fn=__get_value_fn_device_control_default,
-        set_value_fn=__set_value_fn_device_control_default,
-        at_type_fn=lambda at_type: True
-    ),
+    # Room-to-room fan controls (AC-TWT6, devType 33). Field mapping confirmed via
+    # packet capture of the official app against a live unit. Note: this device has no
+    # separate "trigger enabled" toggles for its modes - switching modes is handled
+    # entirely by the mode select entity (see select.py room_to_room_mode).
     ACInfinityDeviceSwitchEntityDescription(
         key=DeviceControlKey.POWER_STATE,
         device_class=SwitchDeviceClass.SWITCH,
@@ -350,7 +316,7 @@ DEVICE_DESCRIPTIONS: list[ACInfinityDeviceSwitchEntityDescription] = [
         off_value=0,
         icon=None,
         translation_key="room_to_room_backlight",
-        enabled_fn=enabled_fn_setting,
+        enabled_fn=enabled_fn_control,
         suitable_fn=__suitable_fn_room_to_room_fan_control,
         get_value_fn=__get_value_fn_device_control_default,
         set_value_fn=__set_value_fn_device_control_default,
@@ -363,11 +329,27 @@ DEVICE_DESCRIPTIONS: list[ACInfinityDeviceSwitchEntityDescription] = [
         off_value=0,
         icon=None,
         translation_key="room_to_room_keytone",
-        enabled_fn=enabled_fn_setting,
+        enabled_fn=enabled_fn_control,
         suitable_fn=__suitable_fn_room_to_room_fan_control,
         get_value_fn=__get_value_fn_device_control_default,
         set_value_fn=__set_value_fn_device_control_default,
         at_type_fn=lambda at_type: True
+    ),
+    # Direction: which room the fan is pulling air from/into (Room 1 <-> Room 2).
+    # Confirmed disabled by the official app while AI Differential mode is active,
+    # since that mode manages direction automatically based on the temp differential.
+    ACInfinityDeviceSwitchEntityDescription(
+        key=DeviceControlKey.TOWARD,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=MdiIcon.SINE_WAVE,
+        translation_key="room_to_room_direction",
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_room_to_room_fan_control,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: at_type != RoomToRoomFanMode.AI_DIFFERENTIAL
     ),
 ]
 

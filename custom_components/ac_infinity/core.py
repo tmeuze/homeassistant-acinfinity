@@ -637,6 +637,14 @@ class ACInfinityService:
                     controller_settings_json = await self._client.get_device_mode_settings(controller_id, 0)
                     self._device_settings[(controller_id, 0)] = controller_settings_json[DeviceControlKey.DEV_SETTING]
 
+                    # Room-to-room fans (e.g. AC-TWT6) have no ports, so the loop below that
+                    # populates _device_controls never runs for them. Their controls (mode,
+                    # fan speed, direction, timer, etc...) live in this same controller-level
+                    # response though, so populate _device_controls for the synthetic port 0
+                    # device here as well.
+                    if controller_properties_json.get(ControllerPropertyKey.DEVICE_TYPE) in ROOM_TO_ROOM_FAN_CONTROLLER_TYPES:
+                        self._device_controls[(controller_id, 0)] = controller_settings_json
+
                     # controller AI will have a sensor array.
                     if ControllerPropertyKey.SENSORS in controller_properties_json[ControllerPropertyKey.DEVICE_INFO]:
                         sensors = controller_properties_json[ControllerPropertyKey.DEVICE_INFO][ControllerPropertyKey.SENSORS] or []
@@ -772,6 +780,8 @@ class ACInfinityService:
     ):
         if device.controller.is_ai_controller:
             await self.__update_ai_control_and_settings(device.controller.controller_id, device.device_port, key_values)
+        elif device.controller.is_room_to_room_fan:
+            await self.__update_room_to_room_fan_controls(device.controller.controller_id, device.device_port, key_values)
         else:
             await self.__update_device_controls(device.controller.controller_id, device.device_port, key_values)
 
@@ -893,6 +903,46 @@ class ACInfinityService:
                 raise
             except Exception as ex:
                 _LOGGER.error("Unable to update ai device controls and settings: Unexpected error", exc_info=ex)
+                raise
+
+    async def __update_room_to_room_fan_controls(
+        self,
+        controller_id: str | int,
+        device_port: int,
+        key_values: dict[str, int],
+    ):
+        """Update the values of a set of settings via the AC Infinity API
+
+        Args:
+            controller_id: the device id of the controller
+            device_port: the index of the port on the controller (always 0)
+            key_values: a list of key/value pairs to update, as a tuple of (setting_key, new_value)
+        """
+        try_count = 0
+        while True:
+            try:
+                await self._client.update_room_to_room_fan_control(controller_id, device_port, key_values)
+                return
+
+            except (
+                ACInfinityClientCannotConnect,
+                ACInfinityClientRequestFailed,
+                aiohttp.ClientError,
+                asyncio.TimeoutError
+            ) as ex:
+
+                if try_count < 4:
+                    try_count += 1
+                    _LOGGER.warning("Unable to update room-to-room fan controls. Retry attempt %s/4", str(try_count))
+                    await asyncio.sleep(1)
+                else:
+                    _LOGGER.error(ACINFINITY_API_ERROR, exc_info=ex)
+                    raise
+            except ACInfinityClientInvalidAuth as ex:
+                _LOGGER.error("Unable to update room-to-room fan controls: Authentication failed", exc_info=ex)
+                raise
+            except Exception as ex:
+                _LOGGER.error("Unable to update room-to-room fan controls: Unexpected error", exc_info=ex)
                 raise
 
     async def close(self) -> None:

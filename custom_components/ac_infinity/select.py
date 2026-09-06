@@ -7,7 +7,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from custom_components.ac_infinity.const import (
-    AtType, DOMAIN, AdvancedSettingsKey, DeviceControlKey,
+    AtType, DOMAIN, AdvancedSettingsKey, DeviceControlKey, RoomToRoomFanMode,
 )
 from custom_components.ac_infinity.core import (
     ACInfinityController,
@@ -58,6 +58,17 @@ MODE_OPTIONS = {
     AtType.VPD: "VPD"
 }
 MODE_OPTIONS_REVERSE = {v: k for k, v in MODE_OPTIONS.items()}
+
+# Room-to-room/through-wall fan (e.g. AC-TWT6) mode options. This device reuses the
+# same "atType" field as UIS controllers, but with entirely different values/meanings -
+# confirmed via packet capture of the official app.
+ROOM_TO_ROOM_MODE_OPTIONS = {
+    RoomToRoomFanMode.MANUAL: "Manual",
+    RoomToRoomFanMode.TEMP_TARGET: "Temperature Target",
+    RoomToRoomFanMode.TIMER: "Timer",
+    RoomToRoomFanMode.AI_DIFFERENTIAL: "AI Differential",
+}
+ROOM_TO_ROOM_MODE_OPTIONS_REVERSE = {v: k for k, v in ROOM_TO_ROOM_MODE_OPTIONS.items()}
 
 SETTINGS_MODE_OPTIONS = [
     "Auto",
@@ -159,6 +170,14 @@ def __get_value_fn_active_mode(entity: ACInfinityEntity, device: ACInfinityDevic
     ]
 
 
+def __get_value_fn_room_to_room_mode(entity: ACInfinityEntity, device: ACInfinityDevice):
+    return ROOM_TO_ROOM_MODE_OPTIONS[
+        entity.ac_infinity.get_device_control(
+            device.controller.controller_id, device.device_port, DeviceControlKey.AT_TYPE, RoomToRoomFanMode.MANUAL
+        )
+    ]
+
+
 def __get_value_fn_dynamic_response_type(
     entity: ACInfinityEntity, device: ACInfinityDevice
 ):
@@ -206,6 +225,19 @@ def __set_value_fn_active_mode(
         device,
         DeviceControlKey.AT_TYPE,
         MODE_OPTIONS_REVERSE[value],
+    )
+
+
+def __set_value_fn_room_to_room_mode(
+    entity: ACInfinityEntity, device: ACInfinityDevice, value: str
+):
+    if value not in ROOM_TO_ROOM_MODE_OPTIONS.values():
+        raise ValueError(f"Invalid room-to-room fan mode: {value}")
+
+    return entity.ac_infinity.update_device_control(
+        device,
+        DeviceControlKey.AT_TYPE,
+        ROOM_TO_ROOM_MODE_OPTIONS_REVERSE[value],
     )
 
 
@@ -340,11 +372,11 @@ DEVICE_DESCRIPTIONS: list[ACInfinityDeviceSelectEntityDescription] = [
     ACInfinityDeviceSelectEntityDescription(
         key=DeviceControlKey.AT_TYPE,
         translation_key="room_to_room_mode",
-        options=list(MODE_OPTIONS.values()),
+        options=list(ROOM_TO_ROOM_MODE_OPTIONS.values()),
         enabled_fn=enabled_fn_control,
         suitable_fn=__suitable_fn_room_to_room_fan_control,
-        get_value_fn=__get_value_fn_active_mode,
-        set_value_fn=__set_value_fn_active_mode,
+        get_value_fn=__get_value_fn_room_to_room_mode,
+        set_value_fn=__set_value_fn_room_to_room_mode,
         at_type_fn=lambda at_type: True
     ),
 ]

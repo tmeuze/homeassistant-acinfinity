@@ -6,7 +6,13 @@ import aiohttp
 import async_timeout
 from homeassistant.exceptions import HomeAssistantError
 
-from custom_components.ac_infinity.const import AdvancedSettingsKey, AtType, DeviceControlKey, ModeAndSettingKeys
+from custom_components.ac_infinity.const import (
+    AdvancedSettingsKey,
+    AtType,
+    DeviceControlKey,
+    ModeAndSettingKeys,
+    ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -205,6 +211,49 @@ class ACInfinityClient:
                 updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR] = "[16,81,32,98,99]"
             case _:
                 raise ValueError(f"Unable to find setting id string - Unknown atType {at_type}")
+
+        url = f"{API_URL_MODE_AND_SETTINGS}?{urlencode(updated)}"
+        _ = await self.__put(url, headers)
+
+    async def update_room_to_room_fan_control(
+        self, controller_id: str | int, device_port: int, key_values: dict[str, int]
+    ):
+        """Sets control values for a room-to-room/through-wall fan (e.g. AC-TWT6, devType 33).
+
+        These devices use the same /api/dev/modeAndSetting endpoint and response shape as
+        AI controllers (a flat top-level payload merged with a nested "devSetting" object),
+        but the "atType" mode values and their corresponding modeAndSettingIdStr strings are
+        entirely different - confirmed via packet capture of the official app. See
+        RoomToRoomFanMode and ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR in const.py.
+
+        Args:
+            controller_id: id of the controller
+            device_port: port of the device (always 0 for this device type)
+            key_values: The key value pairs of settings to set
+        """
+        self.__ensure_logged_in()
+
+        headers = self.__create_headers(use_auth_token=True, use_min_version=True)
+        body = await self.__post(
+            API_URL_GET_DEV_MODE_SETTING, {"devId": controller_id, "port": device_port}, headers
+        )
+        existing_values = body["data"]
+
+        flattened = existing_values[DeviceControlKey.DEV_SETTING].copy()
+        flattened.update(existing_values)
+
+        device_control_keys: list[str] = [
+            getattr(ModeAndSettingKeys, attr)
+            for attr in dir(ModeAndSettingKeys)
+            if not attr.startswith('_')
+        ]
+
+        updated = self.__transfer_values(device_control_keys, key_values, flattened)
+
+        at_type = updated[DeviceControlKey.AT_TYPE]
+        if at_type not in ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR:
+            raise ValueError(f"Unable to find setting id string - Unknown room-to-room fan atType {at_type}")
+        updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR] = ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR[at_type]
 
         url = f"{API_URL_MODE_AND_SETTINGS}?{urlencode(updated)}"
         _ = await self.__put(url, headers)
