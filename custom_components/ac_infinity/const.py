@@ -115,6 +115,32 @@ ROOM_TO_ROOM_FAN_CONTROLLER_TYPES = frozenset({
 })
 
 
+class RoomToRoomFanMode:
+    """Values of the "atType" field specific to room-to-room/through-wall fans
+    (e.g. AC-TWT6, devType 33). This is the same "atType" field UIS tent
+    controllers use, but with entirely different semantics for this device
+    type - confirmed via packet capture of the official app against a live
+    AC-TWT6 unit. Values do NOT correspond to the general-purpose AtType
+    class above, despite some overlapping numbers.
+    """
+
+    MANUAL = 1
+    TEMP_TARGET = 2
+    TIMER = 3
+    AI_DIFFERENTIAL = 4
+
+
+# modeAndSettingIdStr values the official app sends for each RoomToRoomFanMode,
+# confirmed via packet capture. These differ from the AtType-based mapping used
+# for UIS tent/AI controllers in ACInfinityClient.update_ai_device_control_and_settings.
+ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR = {
+    RoomToRoomFanMode.MANUAL: "[18]",
+    RoomToRoomFanMode.TEMP_TARGET: "[16,19]",
+    RoomToRoomFanMode.TIMER: "[16,21]",
+    RoomToRoomFanMode.AI_DIFFERENTIAL: "[16,20]",
+}
+
+
 class SensorPropertyKey:
     # /api/dev/devInfoListAll via "sensors" property
     ACCESS_PORT = "accessPort"

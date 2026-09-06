@@ -189,23 +189,17 @@
       "room_to_room_fan_speed": {
         "name": "Fan Speed"
       },
-      "room_to_room_high_temp_trigger_c": {
-        "name": "High Temperature Trigger (°C)"
-      },
-      "room_to_room_high_temp_trigger_f": {
-        "name": "High Temperature Trigger (°F)"
-      },
-      "room_to_room_low_temp_trigger_c": {
-        "name": "Low Temperature Trigger (°C)"
-      },
-      "room_to_room_low_temp_trigger_f": {
-        "name": "Low Temperature Trigger (°F)"
-      },
       "room_to_room_target_temp_c": {
-        "name": "Target Temperature (°C)"
+        "name": "Temperature Target (°C)"
       },
       "room_to_room_target_temp_f": {
-        "name": "Target Temperature (°F)"
+        "name": "Temperature Target (°F)"
+      },
+      "room_to_room_ai_differential": {
+        "name": "AI Temperature Differential"
+      },
+      "room_to_room_timer_duration": {
+        "name": "Timer Duration"
       }
     },
     "select": {
@@ -336,20 +330,14 @@
       "sunrise_timer_enabled": {
         "name": "Sunrise/Sunset Enabled"
       },
-      "room_to_room_high_temp_enabled": {
-        "name": "High Temperature Trigger Enabled"
-      },
-      "room_to_room_low_temp_enabled": {
-        "name": "Low Temperature Trigger Enabled"
-      },
-      "room_to_room_target_temp_enabled": {
-        "name": "Target Temperature Enabled"
-      },
       "room_to_room_power": {
         "name": "Power"
       },
       "room_to_room_backlight": {
         "name": "Display Backlight"
+      },
+      "room_to_room_direction": {
+        "name": "Direction"
       },
       "room_to_room_keytone": {
         "name": "Keypress Sound"

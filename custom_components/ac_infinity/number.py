@@ -9,7 +9,7 @@ from homeassistant.components.number import (
     NumberMode,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform, UnitOfTemperature
+from homeassistant.const import Platform, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
 
 from custom_components.ac_infinity.const import (
@@ -18,6 +18,7 @@ from custom_components.ac_infinity.const import (
     AdvancedSettingsKey,
     DeviceControlKey,
     MdiIcon,
+    RoomToRoomFanMode,
 )
 from custom_components.ac_infinity.core import (
     ACInfinityController,
@@ -199,6 +200,14 @@ def __get_value_fn_device_control_default(entity: ACInfinityEntity, device: ACIn
     )
 
 
+def __get_value_fn_room_to_room_timer_minutes(entity: ACInfinityEntity, device: ACInfinityDevice):
+    """Room-to-room fan timer duration is stored in seconds; convert to minutes for display."""
+    seconds = entity.ac_infinity.get_device_control(
+        device.controller.controller_id, device.device_port, entity.data_key, 0
+    )
+    return math.floor((seconds or 0) / 60)
+
+
 def __get_value_fn_device_setting_default(entity: ACInfinityEntity, device: ACInfinityDevice):
     return entity.ac_infinity.get_device_setting(
         device.controller.controller_id, device.device_port, entity.data_key, 0
@@ -313,6 +322,13 @@ def __set_value_fn_device_control_default(
     entity: ACInfinityEntity, device: ACInfinityDevice, value: float
 ):
     return entity.ac_infinity.update_device_control(device, entity.data_key, int(value or 0))
+
+
+def __set_value_fn_room_to_room_timer_minutes(
+    entity: ACInfinityEntity, device: ACInfinityDevice, value: float
+):
+    """Room-to-room fan timer duration is stored in seconds; convert from minutes."""
+    return entity.ac_infinity.update_device_control(device, entity.data_key, int(value or 0) * 60)
 
 
 def __set_value_fn_controller_setting_default(
@@ -985,12 +1001,14 @@ DEVICE_DESCRIPTIONS: list[ACInfinityDeviceNumberEntityDescription] = [
         set_value_fn=__set_value_fn_device_setting_default,
         at_type_fn=lambda at_type: True
     ),
-    # Room-to-room fan controls (AC-TWT6, devType 33)
+    # Room-to-room fan controls (AC-TWT6, devType 33).
+    # Field mapping confirmed via packet capture of the official app against a live unit
+    # (the existing UIS/AI atType and key semantics do not apply to this device type).
     ACInfinityDeviceNumberEntityDescription(
         key=DeviceControlKey.ON_SPEED,
         device_class=NumberDeviceClass.POWER_FACTOR,
-        mode=NumberMode.AUTO,
-        native_min_value=0,
+        mode=NumberMode.SLIDER,
+        native_min_value=1,
         native_max_value=10,
         native_step=1,
         icon=MdiIcon.KNOB,
@@ -1000,74 +1018,10 @@ DEVICE_DESCRIPTIONS: list[ACInfinityDeviceNumberEntityDescription] = [
         suitable_fn=__suitable_fn_room_to_room_fan_control,
         get_value_fn=__get_value_fn_device_control_default,
         set_value_fn=__set_value_fn_device_control_default,
-        at_type_fn=lambda at_type: True
+        at_type_fn=lambda at_type: at_type == RoomToRoomFanMode.MANUAL,
     ),
     ACInfinityDeviceNumberEntityDescription(
         key=DeviceControlKey.AUTO_TEMP_HIGH_TRIGGER,
-        device_class=NumberDeviceClass.TEMPERATURE,
-        mode=NumberMode.BOX,
-        native_min_value=0,
-        native_max_value=40,
-        native_step=1,
-        icon=None,
-        translation_key="room_to_room_high_temp_trigger_c",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        enabled_fn=enabled_fn_control,
-        suitable_fn=__suitable_fn_room_to_room_fan_control,
-        get_value_fn=__get_value_fn_device_control_default,
-        set_value_fn=__set_value_fn_device_control_default,
-        at_type_fn=lambda at_type: True
-    ),
-    ACInfinityDeviceNumberEntityDescription(
-        key=DeviceControlKey.AUTO_TEMP_HIGH_TRIGGER_F,
-        device_class=NumberDeviceClass.TEMPERATURE,
-        mode=NumberMode.BOX,
-        native_min_value=32,
-        native_max_value=104,
-        native_step=1,
-        icon=None,
-        translation_key="room_to_room_high_temp_trigger_f",
-        native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
-        enabled_fn=enabled_fn_control,
-        suitable_fn=__suitable_fn_room_to_room_fan_control,
-        get_value_fn=__get_value_fn_device_control_default,
-        set_value_fn=__set_value_fn_device_control_default,
-        at_type_fn=lambda at_type: True
-    ),
-    ACInfinityDeviceNumberEntityDescription(
-        key=DeviceControlKey.AUTO_TEMP_LOW_TRIGGER,
-        device_class=NumberDeviceClass.TEMPERATURE,
-        mode=NumberMode.BOX,
-        native_min_value=0,
-        native_max_value=40,
-        native_step=1,
-        icon=None,
-        translation_key="room_to_room_low_temp_trigger_c",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        enabled_fn=enabled_fn_control,
-        suitable_fn=__suitable_fn_room_to_room_fan_control,
-        get_value_fn=__get_value_fn_device_control_default,
-        set_value_fn=__set_value_fn_device_control_default,
-        at_type_fn=lambda at_type: True
-    ),
-    ACInfinityDeviceNumberEntityDescription(
-        key=DeviceControlKey.AUTO_TEMP_LOW_TRIGGER_F,
-        device_class=NumberDeviceClass.TEMPERATURE,
-        mode=NumberMode.BOX,
-        native_min_value=32,
-        native_max_value=104,
-        native_step=1,
-        icon=None,
-        translation_key="room_to_room_low_temp_trigger_f",
-        native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
-        enabled_fn=enabled_fn_control,
-        suitable_fn=__suitable_fn_room_to_room_fan_control,
-        get_value_fn=__get_value_fn_device_control_default,
-        set_value_fn=__set_value_fn_device_control_default,
-        at_type_fn=lambda at_type: True
-    ),
-    ACInfinityDeviceNumberEntityDescription(
-        key=DeviceControlKey.TARGET_TEMP,
         device_class=NumberDeviceClass.TEMPERATURE,
         mode=NumberMode.BOX,
         native_min_value=0,
@@ -1080,10 +1034,10 @@ DEVICE_DESCRIPTIONS: list[ACInfinityDeviceNumberEntityDescription] = [
         suitable_fn=__suitable_fn_room_to_room_fan_control,
         get_value_fn=__get_value_fn_device_control_default,
         set_value_fn=__set_value_fn_device_control_default,
-        at_type_fn=lambda at_type: True
+        at_type_fn=lambda at_type: at_type == RoomToRoomFanMode.TEMP_TARGET,
     ),
     ACInfinityDeviceNumberEntityDescription(
-        key=DeviceControlKey.TARGET_TEMP_F,
+        key=DeviceControlKey.AUTO_TEMP_HIGH_TRIGGER_F,
         device_class=NumberDeviceClass.TEMPERATURE,
         mode=NumberMode.BOX,
         native_min_value=32,
@@ -1096,7 +1050,44 @@ DEVICE_DESCRIPTIONS: list[ACInfinityDeviceNumberEntityDescription] = [
         suitable_fn=__suitable_fn_room_to_room_fan_control,
         get_value_fn=__get_value_fn_device_control_default,
         set_value_fn=__set_value_fn_device_control_default,
-        at_type_fn=lambda at_type: True
+        at_type_fn=lambda at_type: at_type == RoomToRoomFanMode.TEMP_TARGET,
+    ),
+    # AI mode's temperature differential. Confirmed via capture: this reuses the UIS
+    # "targetHumi" field name, despite the value being a temperature differential in °F
+    # rather than a humidity percentage, for this device type.
+    ACInfinityDeviceNumberEntityDescription(
+        key=DeviceControlKey.TARGET_HUMI,
+        device_class=None,
+        mode=NumberMode.BOX,
+        native_min_value=1,
+        native_max_value=10,
+        native_step=1,
+        icon=MdiIcon.THERMOMETER_PLUS,
+        translation_key="room_to_room_ai_differential",
+        native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_room_to_room_fan_control,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: at_type == RoomToRoomFanMode.AI_DIFFERENTIAL,
+    ),
+    # Timer mode duration. The API stores this in seconds (confirmed: 1800=30min,
+    # 7200=2hr); this entity presents it in minutes for usability.
+    ACInfinityDeviceNumberEntityDescription(
+        key=DeviceControlKey.TIMER_DURATION_TO_OFF,
+        device_class=NumberDeviceClass.DURATION,
+        mode=NumberMode.BOX,
+        native_min_value=1,
+        native_max_value=480,
+        native_step=1,
+        icon=None,
+        translation_key="room_to_room_timer_duration",
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_room_to_room_fan_control,
+        get_value_fn=__get_value_fn_room_to_room_timer_minutes,
+        set_value_fn=__set_value_fn_room_to_room_timer_minutes,
+        at_type_fn=lambda at_type: at_type == RoomToRoomFanMode.TIMER,
     ),
 ]
 
