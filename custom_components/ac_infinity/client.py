@@ -12,6 +12,7 @@ from custom_components.ac_infinity.const import (
     DeviceControlKey,
     ModeAndSettingKeys,
     ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR,
+    RoomToRoomFanExtraKeys,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -242,9 +243,16 @@ class ACInfinityClient:
         flattened = existing_values[DeviceControlKey.DEV_SETTING].copy()
         flattened.update(existing_values)
 
+        # Includes RoomToRoomFanExtraKeys - fields this device's firmware requires that
+        # aren't part of the general ModeAndSettingKeys set (confirmed via packet capture;
+        # omitting them causes the API to reject the request with a generic failure code).
         device_control_keys: list[str] = [
             getattr(ModeAndSettingKeys, attr)
             for attr in dir(ModeAndSettingKeys)
+            if not attr.startswith('_')
+        ] + [
+            getattr(RoomToRoomFanExtraKeys, attr)
+            for attr in dir(RoomToRoomFanExtraKeys)
             if not attr.startswith('_')
         ]
 

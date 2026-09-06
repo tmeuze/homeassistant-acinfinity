@@ -141,6 +141,26 @@ ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR = {
 }
 
 
+class RoomToRoomFanExtraKeys:
+    """Additional modeAndSetting payload fields required specifically by room-to-room/
+    through-wall fans (e.g. AC-TWT6) that are not part of the general ModeAndSettingKeys
+    set used by UIS/AI controllers. The device's firmware appears to reject the request
+    (generic "Operation failed" / code 999999) if these are omitted. Confirmed present
+    in every official-app request via packet capture.
+    """
+
+    DEVICE_COLOR = "deviceColor"
+    H_OSC = "hOsc"
+    V_OSC = "vOsc"
+    INSIDE_PORT = "insidePort"
+    OUTSIDE_PORT = "outsidePort"
+    INSIDE_TYPE = "insideType"
+    OUTSIDE_TYPE = "outsideType"
+    IS_ADV_TEMP_TRIGGER = "isAdvTempTrigger"
+    LK_TYPE = "lkType"
+    STANDARD_MODE = "standardMode"
+
+
 class SensorPropertyKey:
     # /api/dev/devInfoListAll via "sensors" property
     ACCESS_PORT = "accessPort"
