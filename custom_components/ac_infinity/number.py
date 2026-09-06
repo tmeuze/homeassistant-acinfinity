@@ -80,26 +80,42 @@ def __suitable_fn_controller_setting_temp_impl(
 def __suitable_fn_controller_setting_temp_f(
     entity: ACInfinityEntity, controller: ACInfinityController
 ):
-    return not controller.is_ai_controller and __suitable_fn_controller_setting_temp_impl(entity, controller, 0)
+    return (
+        not controller.is_ai_controller
+        and not controller.is_room_to_room_fan
+        and __suitable_fn_controller_setting_temp_impl(entity, controller, 0)
+    )
 
 
 def __suitable_fn_controller_setting_temp_c(
     entity: ACInfinityEntity, controller: ACInfinityController
 ):
-    return not controller.is_ai_controller and __suitable_fn_controller_setting_temp_impl(entity, controller, 1)
+    return (
+        not controller.is_ai_controller
+        and not controller.is_room_to_room_fan
+        and __suitable_fn_controller_setting_temp_impl(entity, controller, 1)
+    )
 
 
 def __suitable_fn_controller_setting_default(
     entity: ACInfinityEntity, controller: ACInfinityController
 ):
-    return not controller.is_ai_controller and entity.ac_infinity.get_controller_setting_exists(
-        controller.controller_id, entity.data_key
+    return (
+        not controller.is_ai_controller
+        and not controller.is_room_to_room_fan
+        and entity.ac_infinity.get_controller_setting_exists(
+            controller.controller_id, entity.data_key
+        )
     )
 
 
 def __suitable_fn_device_control_default(entity: ACInfinityEntity, device: ACInfinityDevice):
-    return entity.ac_infinity.get_device_control_exists(
-        device.controller.controller_id, device.device_port, entity.data_key
+    """For basic/AI UIS controllers only; room-to-room fans use their own dedicated entities."""
+    return (
+        not device.controller.is_room_to_room_fan
+        and entity.ac_infinity.get_device_control_exists(
+            device.controller.controller_id, device.device_port, entity.data_key
+        )
     )
 
 def __suitable_fn_device_control_basic_controller(entity: ACInfinityEntity, device: ACInfinityDevice):
@@ -143,11 +159,19 @@ def __suitable_fn_device_setting_temp_impl(
 
 
 def __suitable_fn_device_setting_temp_f(entity: ACInfinityEntity, device: ACInfinityDevice):
-    return not device.controller.is_ai_controller and __suitable_fn_device_setting_temp_impl(entity, device, 0)
+    return (
+        not device.controller.is_ai_controller
+        and not device.controller.is_room_to_room_fan
+        and __suitable_fn_device_setting_temp_impl(entity, device, 0)
+    )
 
 
 def __suitable_fn_device_setting_temp_c(entity: ACInfinityEntity, device: ACInfinityDevice):
-    return not device.controller.is_ai_controller and __suitable_fn_device_setting_temp_impl(entity, device, 1)
+    return (
+        not device.controller.is_ai_controller
+        and not device.controller.is_room_to_room_fan
+        and __suitable_fn_device_setting_temp_impl(entity, device, 1)
+    )
 
 
 def __suitable_fn_room_to_room_fan_control(entity: ACInfinityEntity, device: ACInfinityDevice):

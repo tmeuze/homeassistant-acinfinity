@@ -94,8 +94,15 @@ def __suitable_fn_controller_property_default(
     # These values are available in the sensor array.  The external values are duplicated on the base fields used by
     # the non-AI controllers. We use the sensor array values as the source of truth, and choose not to duplicate them here
     # by skipping the controller descriptions for the base values.
-    return not controller.is_ai_controller and entity.ac_infinity.get_controller_property_exists(
-        controller.controller_id, entity.data_key
+    #
+    # Room-to-room fans (e.g. AC-TWT6) don't report humidity/VPD at all; their only
+    # environmental readings are the dedicated insideTemp/outsideTemp zone sensors.
+    return (
+        not controller.is_ai_controller
+        and not controller.is_room_to_room_fan
+        and entity.ac_infinity.get_controller_property_exists(
+            controller.controller_id, entity.data_key
+        )
     )
 
 
@@ -571,7 +578,7 @@ DEVICE_DESCRIPTIONS: list[ACInfinityDeviceSensorEntityDescription] = [
         icon=None,  # default
         translation_key="next_state_change",
         enabled_fn=enabled_fn_sensor,
-        suitable_fn=lambda x, y: True,
+        suitable_fn=lambda entity, device: not device.controller.is_room_to_room_fan,
         get_value_fn=__get_next_mode_change_timestamp,
     ),
 ]
