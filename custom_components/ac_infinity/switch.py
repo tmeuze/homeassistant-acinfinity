@@ -73,8 +73,12 @@ def __suitable_fn_device_setting_default(entity: ACInfinityEntity, device: ACInf
 
 
 def __suitable_fn_device_control_default(entity: ACInfinityEntity, device: ACInfinityDevice):
-    return entity.ac_infinity.get_device_control_exists(
-        device.controller.controller_id, device.device_port, entity.data_key
+    """For basic/AI UIS controllers only; room-to-room fans use their own dedicated entities."""
+    return (
+        not device.controller.is_room_to_room_fan
+        and entity.ac_infinity.get_device_control_exists(
+            device.controller.controller_id, device.device_port, entity.data_key
+        )
     )
 
 
