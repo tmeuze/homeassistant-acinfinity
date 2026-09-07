@@ -13,6 +13,7 @@ from custom_components.ac_infinity.const import (
     ModeAndSettingKeys,
     ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR,
     RoomToRoomFanExtraKeys,
+    RoomToRoomFanMode,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -242,6 +243,7 @@ class ACInfinityClient:
 
         flattened = existing_values[DeviceControlKey.DEV_SETTING].copy()
         flattened.update(existing_values)
+        previous_at_type = flattened.get(DeviceControlKey.AT_TYPE)
 
         # Includes RoomToRoomFanExtraKeys - fields this device's firmware requires that
         # aren't part of the general ModeAndSettingKeys set (confirmed via packet capture;
@@ -261,7 +263,22 @@ class ACInfinityClient:
         at_type = updated[DeviceControlKey.AT_TYPE]
         if at_type not in ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR:
             raise ValueError(f"Unable to find setting id string - Unknown room-to-room fan atType {at_type}")
-        updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR] = ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR[at_type]
+
+        if at_type != previous_at_type and at_type == RoomToRoomFanMode.MANUAL:
+            # Confirmed via capture: transitioning INTO Manual mode from a different mode
+            # uses "[16]" alone, distinct from "[18]" used while already in Manual and
+            # only adjusting a value (e.g. fan speed) without changing mode. The other
+            # modes' entries in ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR are confirmed correct
+            # for their mode-transition case, which is the common path through this method.
+            updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR] = "[16]"
+        else:
+            updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR] = ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR[at_type]
+
+        _LOGGER.debug(
+            "Room-to-room fan control update: previous_at_type=%s new_at_type=%s "
+            "idStr=%s key_values=%s",
+            previous_at_type, at_type, updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR], key_values,
+        )
 
         url = f"{API_URL_MODE_AND_SETTINGS}?{urlencode(updated)}"
         _ = await self.__put(url, headers)
