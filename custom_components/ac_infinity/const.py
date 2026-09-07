@@ -134,11 +134,19 @@ class RoomToRoomFanMode:
     OFF = 0
 
 
-# modeAndSettingIdStr values the official app sends for each RoomToRoomFanMode,
-# confirmed via packet capture. These differ from the AtType-based mapping used
-# for UIS tent/AI controllers in ACInfinityClient.update_ai_device_control_and_settings.
-ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR = {
-    RoomToRoomFanMode.MANUAL: "[18]",
+# modeAndSettingIdStr values the official app sends, confirmed via packet capture.
+# These differ from the AtType-based mapping used for UIS tent/AI controllers in
+# ACInfinityClient.update_ai_device_control_and_settings, AND differ from each other
+# depending on whether the request is actually changing the mode (TRANSITION - e.g. the
+# mode select entity) or just adjusting some other value/switch while the mode stays the
+# same (STEADY - e.g. fan speed, power, backlight, or a mode's own value while already
+# active). Confirmed concretely for MANUAL (steady "[18]" vs transition "[16]") and for
+# AI_DIFFERENTIAL (steady must NOT be the transition string "[16,20]" - using it for a
+# steady-state power toggle was reproduced failing with a generic API error). The
+# steady-state strings for TEMP_TARGET/TIMER follow the same "drop the 16," pattern
+# established by MANUAL and AI_DIFFERENTIAL, though not independently reproduced.
+ROOM_TO_ROOM_FAN_MODE_TRANSITION_ID_STR = {
+    RoomToRoomFanMode.MANUAL: "[16]",
     RoomToRoomFanMode.TEMP_TARGET: "[16,19]",
     RoomToRoomFanMode.TIMER: "[16,21]",
     RoomToRoomFanMode.AI_DIFFERENTIAL: "[16,20]",
@@ -148,6 +156,17 @@ ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR = {
     # rather than failing outright.
     RoomToRoomFanMode.OFF: "[22]",
 }
+
+ROOM_TO_ROOM_FAN_MODE_STEADY_ID_STR = {
+    RoomToRoomFanMode.MANUAL: "[18]",
+    RoomToRoomFanMode.TEMP_TARGET: "[19]",
+    RoomToRoomFanMode.TIMER: "[21]",
+    RoomToRoomFanMode.AI_DIFFERENTIAL: "[20]",
+    RoomToRoomFanMode.OFF: "[22]",
+}
+
+# Kept for any external references; prefer the TRANSITION/STEADY dicts above.
+ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR = ROOM_TO_ROOM_FAN_MODE_TRANSITION_ID_STR
 
 
 class RoomToRoomFanExtraKeys:
