@@ -281,6 +281,7 @@ class ACInfinityClient:
             previous_at_type, at_type, is_power_action,
             updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR], key_values,
         )
+        _LOGGER.debug("Room-to-room fan control full outgoing payload: %s", json.dumps(updated, sort_keys=True))
 
         url = f"{API_URL_MODE_AND_SETTINGS}?{urlencode(updated)}"
         _ = await self.__put(url, headers)
