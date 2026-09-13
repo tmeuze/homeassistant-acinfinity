@@ -11,8 +11,8 @@ from custom_components.ac_infinity.const import (
     AtType,
     DeviceControlKey,
     ModeAndSettingKeys,
-    ROOM_TO_ROOM_FAN_MODE_STEADY_ID_STR,
-    ROOM_TO_ROOM_FAN_MODE_TRANSITION_ID_STR,
+    ROOM_TO_ROOM_FAN_MODE_ID_STR,
+    ROOM_TO_ROOM_FAN_POWER_ACTION_ID_STR,
     RoomToRoomFanExtraKeys,
     RoomToRoomFanMode,
 )
@@ -262,23 +262,23 @@ class ACInfinityClient:
         updated = self.__transfer_values(device_control_keys, key_values, flattened)
 
         at_type = updated[DeviceControlKey.AT_TYPE]
-        if at_type not in ROOM_TO_ROOM_FAN_MODE_TRANSITION_ID_STR:
+        if at_type not in ROOM_TO_ROOM_FAN_MODE_ID_STR:
             raise ValueError(f"Unable to find setting id string - Unknown room-to-room fan atType {at_type}")
 
-        # The mode itself is changing (e.g. the mode select entity) vs. some other value
-        # or switch being adjusted while the mode stays the same (e.g. fan speed, power,
-        # backlight, or a mode's own value while already active) - these require different
-        # modeAndSettingIdStr values. See the dict definitions in const.py for the evidence.
-        is_mode_transition = at_type != previous_at_type
-        if is_mode_transition:
-            updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR] = ROOM_TO_ROOM_FAN_MODE_TRANSITION_ID_STR[at_type]
+        # Confirmed via capture: a request that's specifically toggling power uses a fixed
+        # idStr regardless of atType, distinct from mode/value changes which are keyed by
+        # atType. Check the caller's original key_values (not the merged `updated`), since
+        # every field is present in `updated` after merging with existing values.
+        is_power_action = DeviceControlKey.POWER_STATE in key_values
+        if is_power_action:
+            updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR] = ROOM_TO_ROOM_FAN_POWER_ACTION_ID_STR
         else:
-            updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR] = ROOM_TO_ROOM_FAN_MODE_STEADY_ID_STR[at_type]
+            updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR] = ROOM_TO_ROOM_FAN_MODE_ID_STR[at_type]
 
         _LOGGER.debug(
             "Room-to-room fan control update: previous_at_type=%s new_at_type=%s "
-            "is_mode_transition=%s idStr=%s key_values=%s",
-            previous_at_type, at_type, is_mode_transition,
+            "is_power_action=%s idStr=%s key_values=%s",
+            previous_at_type, at_type, is_power_action,
             updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR], key_values,
         )
 
