@@ -136,37 +136,39 @@ class RoomToRoomFanMode:
 
 # modeAndSettingIdStr values the official app sends, confirmed via packet capture.
 # These differ from the AtType-based mapping used for UIS tent/AI controllers in
-# ACInfinityClient.update_ai_device_control_and_settings, AND differ from each other
-# depending on whether the request is actually changing the mode (TRANSITION - e.g. the
-# mode select entity) or just adjusting some other value/switch while the mode stays the
-# same (STEADY - e.g. fan speed, power, backlight, or a mode's own value while already
-# active). Confirmed concretely for MANUAL (steady "[18]" vs transition "[16]") and for
-# AI_DIFFERENTIAL (steady must NOT be the transition string "[16,20]" - using it for a
-# steady-state power toggle was reproduced failing with a generic API error). The
-# steady-state strings for TEMP_TARGET/TIMER follow the same "drop the 16," pattern
-# established by MANUAL and AI_DIFFERENTIAL, though not independently reproduced.
-ROOM_TO_ROOM_FAN_MODE_TRANSITION_ID_STR = {
+# ACInfinityClient.update_ai_device_control_and_settings.
+#
+# IMPORTANT (revised after further capture): the previous theory that this differed
+# between a mode "transition" and "steady state" per atType was wrong - a direct capture
+# of adjusting AI_DIFFERENTIAL's own value while already in that mode (steady state) used
+# the SAME string "[16,20]" as entering the mode. The real distinction is which FIELD is
+# being changed, not whether atType itself is changing:
+#   - Changing the mode itself, or a mode's own associated value (temp target, AI
+#     differential, timer duration): use ROOM_TO_ROOM_FAN_MODE_ID_STR[atType] below,
+#     regardless of atType, confirmed for AI_DIFFERENTIAL in both transition and
+#     steady-state forms.
+#   - Changing power state specifically (the power switch): use
+#     ROOM_TO_ROOM_FAN_POWER_ACTION_ID_STR ("[22]") instead, confirmed via capture for
+#     BOTH powering off and powering back on, independent of the current atType.
+# Fan speed/backlight/keytone/direction writes don't touch atType or powerState, so they
+# fall through to the atType-keyed mapping same as any other non-power adjustment.
+ROOM_TO_ROOM_FAN_MODE_ID_STR = {
     RoomToRoomFanMode.MANUAL: "[16]",
     RoomToRoomFanMode.TEMP_TARGET: "[16,19]",
     RoomToRoomFanMode.TIMER: "[16,21]",
     RoomToRoomFanMode.AI_DIFFERENTIAL: "[16,20]",
     # Best-effort for the OFF state - not confirmed as the "correct" idStr for it
-    # specifically (only observed once, mid-transition between other modes), but lets
-    # writes to other controls (power back on, backlight, etc...) succeed while off
-    # rather than failing outright.
+    # specifically, but lets writes to other controls succeed while off rather than
+    # failing outright.
     RoomToRoomFanMode.OFF: "[22]",
 }
 
-ROOM_TO_ROOM_FAN_MODE_STEADY_ID_STR = {
-    RoomToRoomFanMode.MANUAL: "[18]",
-    RoomToRoomFanMode.TEMP_TARGET: "[19]",
-    RoomToRoomFanMode.TIMER: "[21]",
-    RoomToRoomFanMode.AI_DIFFERENTIAL: "[20]",
-    RoomToRoomFanMode.OFF: "[22]",
-}
+# Confirmed via capture: used whenever the request is specifically changing powerState,
+# regardless of atType (observed identically for both powering off and powering back on).
+ROOM_TO_ROOM_FAN_POWER_ACTION_ID_STR = "[22]"
 
-# Kept for any external references; prefer the TRANSITION/STEADY dicts above.
-ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR = ROOM_TO_ROOM_FAN_MODE_TRANSITION_ID_STR
+# Kept for any external references; prefer ROOM_TO_ROOM_FAN_MODE_ID_STR above.
+ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR = ROOM_TO_ROOM_FAN_MODE_ID_STR
 
 
 class RoomToRoomFanExtraKeys:
