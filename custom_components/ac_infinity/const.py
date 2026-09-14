@@ -143,20 +143,22 @@ class RoomToRoomFanMode:
 # These differ from the AtType-based mapping used for UIS tent/AI controllers in
 # ACInfinityClient.update_ai_device_control_and_settings.
 #
-# IMPORTANT (revised after further capture): the previous theory that this differed
-# between a mode "transition" and "steady state" per atType was wrong - a direct capture
-# of adjusting AI_DIFFERENTIAL's own value while already in that mode (steady state) used
-# the SAME string "[16,20]" as entering the mode. The real distinction is which FIELD is
-# being changed, not whether atType itself is changing:
-#   - Changing the mode itself, or a mode's own associated value (temp target, AI
-#     differential, timer duration): use ROOM_TO_ROOM_FAN_MODE_ID_STR[atType] below,
-#     regardless of atType, confirmed for AI_DIFFERENTIAL in both transition and
-#     steady-state forms.
-#   - Changing power state specifically (the power switch): use
-#     ROOM_TO_ROOM_FAN_POWER_ACTION_ID_STR ("[22]") instead, confirmed via capture for
-#     BOTH powering off and powering back on, independent of the current atType.
-# Fan speed/backlight/keytone/direction writes don't touch atType or powerState, so they
-# fall through to the atType-keyed mapping same as any other non-power adjustment.
+# The distinction is which FIELD is being changed, not simply whether atType itself is
+# changing - and it is NOT uniform across modes:
+#   - Changing power state specifically (the power switch): always
+#     ROOM_TO_ROOM_FAN_POWER_ACTION_ID_STR ("[22]"), confirmed via capture for both
+#     powering off and powering back on, independent of atType.
+#   - Changing a mode's own associated value while ALREADY in that mode (e.g. adjusting
+#     the AI differential value without leaving AI_DIFFERENTIAL): confirmed for
+#     AI_DIFFERENTIAL to use the SAME string as entering the mode ("[16,20]") - i.e. no
+#     steady/transition split for this mode.
+#   - Manual mode is the one confirmed EXCEPTION: entering Manual uses "[16]", but
+#     adjusting fan speed while already in Manual uses "[18]"
+#     (ROOM_TO_ROOM_FAN_MODE_MANUAL_STEADY_ID_STR) - confirmed via capture of a fresh
+#     mode-transition immediately followed by a fan-speed-only change.
+#   - TEMP_TARGET/TIMER's steady-state behavior (adjusting their own value without
+#     leaving the mode) is unconfirmed; assumed to follow AI_DIFFERENTIAL's no-split
+#     pattern rather than Manual's, pending further evidence.
 ROOM_TO_ROOM_FAN_MODE_ID_STR = {
     RoomToRoomFanMode.MANUAL: "[16]",
     RoomToRoomFanMode.TEMP_TARGET: "[16,19]",
@@ -171,6 +173,11 @@ ROOM_TO_ROOM_FAN_MODE_ID_STR = {
 # Confirmed via capture: used whenever the request is specifically changing powerState,
 # regardless of atType (observed identically for both powering off and powering back on).
 ROOM_TO_ROOM_FAN_POWER_ACTION_ID_STR = "[22]"
+
+# Confirmed via capture: used instead of ROOM_TO_ROOM_FAN_MODE_ID_STR[MANUAL] ("[16]")
+# specifically when adjusting fan speed (or any other value) while ALREADY in Manual mode,
+# as opposed to just having transitioned into it.
+ROOM_TO_ROOM_FAN_MODE_MANUAL_STEADY_ID_STR = "[18]"
 
 # Kept for any external references; prefer ROOM_TO_ROOM_FAN_MODE_ID_STR above.
 ROOM_TO_ROOM_FAN_MODE_SETTING_ID_STR = ROOM_TO_ROOM_FAN_MODE_ID_STR
