@@ -22,6 +22,7 @@ from custom_components.ac_infinity.client import ACInfinityClient, ACInfinityCli
 from .const import (
     AI_CONTROLLER_TYPES,
     ROOM_TO_ROOM_FAN_CONTROLLER_TYPES,
+    ROOM_TO_ROOM_FAN_DISPLAY_SETTING_TRIGGER_KEYS,
     DOMAIN,
     MANUFACTURER,
     ControllerPropertyKey,
@@ -790,7 +791,18 @@ class ACInfinityService:
         if device.controller.is_ai_controller:
             await self.__update_ai_control_and_settings(device.controller.controller_id, device.device_port, key_values)
         elif device.controller.is_room_to_room_fan:
-            await self.__update_room_to_room_fan_controls(device.controller.controller_id, device.device_port, key_values)
+            if ROOM_TO_ROOM_FAN_DISPLAY_SETTING_TRIGGER_KEYS.intersection(key_values):
+                controller_id = device.controller.controller_id
+                await self.__update_room_to_room_fan_display_setting(
+                    controller_id,
+                    device.device_port,
+                    self.get_controller_property(controller_id, ControllerPropertyKey.DEVICE_NAME, ""),
+                    self.get_controller_property(controller_id, ControllerPropertyKey.INSIDE_ROOM_NAME, ""),
+                    self.get_controller_property(controller_id, ControllerPropertyKey.OUTSIDE_ROOM_NAME, ""),
+                    key_values,
+                )
+            else:
+                await self.__update_room_to_room_fan_controls(device.controller.controller_id, device.device_port, key_values)
         else:
             await self.__update_device_controls(device.controller.controller_id, device.device_port, key_values)
 
@@ -952,6 +964,56 @@ class ACInfinityService:
                 raise
             except Exception as ex:
                 _LOGGER.error("Unable to update room-to-room fan controls: Unexpected error", exc_info=ex)
+                raise
+
+    async def __update_room_to_room_fan_display_setting(
+        self,
+        controller_id: str | int,
+        device_port: int,
+        dev_name: str,
+        inside_room_name: str,
+        outside_room_name: str,
+        key_values: dict[str, int],
+    ):
+        """Update display/panel settings (backlight, keytone, brightness) via the AC
+        Infinity API. These use a different request shape than other room-to-room fan
+        controls - see ACInfinityClient.update_room_to_room_fan_display_setting.
+
+        Args:
+            controller_id: the device id of the controller
+            device_port: the index of the port on the controller (always 0)
+            dev_name: the controller's display name, as configured in the app
+            inside_room_name: the "inside" zone's room name, as configured in the app
+            outside_room_name: the "outside" zone's room name, as configured in the app
+            key_values: a list of key/value pairs to update, as a tuple of (setting_key, new_value)
+        """
+        try_count = 0
+        while True:
+            try:
+                await self._client.update_room_to_room_fan_display_setting(
+                    controller_id, device_port, dev_name, inside_room_name, outside_room_name, key_values
+                )
+                return
+
+            except (
+                ACInfinityClientCannotConnect,
+                ACInfinityClientRequestFailed,
+                aiohttp.ClientError,
+                asyncio.TimeoutError
+            ) as ex:
+
+                if try_count < 4:
+                    try_count += 1
+                    _LOGGER.warning("Unable to update room-to-room fan display setting. Retry attempt %s/4", str(try_count))
+                    await asyncio.sleep(1)
+                else:
+                    _LOGGER.error(ACINFINITY_API_ERROR, exc_info=ex)
+                    raise
+            except ACInfinityClientInvalidAuth as ex:
+                _LOGGER.error("Unable to update room-to-room fan display setting: Authentication failed", exc_info=ex)
+                raise
+            except Exception as ex:
+                _LOGGER.error("Unable to update room-to-room fan display setting: Unexpected error", exc_info=ex)
                 raise
 
     async def close(self) -> None:

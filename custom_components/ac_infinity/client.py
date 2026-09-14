@@ -11,6 +11,8 @@ from custom_components.ac_infinity.const import (
     AtType,
     DeviceControlKey,
     ModeAndSettingKeys,
+    ROOM_TO_ROOM_FAN_DISPLAY_SETTING_ID_STR,
+    ROOM_TO_ROOM_FAN_DISPLAY_SETTING_KEYS,
     ROOM_TO_ROOM_FAN_MODE_ID_STR,
     ROOM_TO_ROOM_FAN_POWER_ACTION_ID_STR,
     RoomToRoomFanExtraKeys,
@@ -282,6 +284,58 @@ class ACInfinityClient:
             updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR], key_values,
         )
         _LOGGER.debug("Room-to-room fan control full outgoing payload: %s", json.dumps(updated, sort_keys=True))
+
+        url = f"{API_URL_MODE_AND_SETTINGS}?{urlencode(updated)}"
+        _ = await self.__put(url, headers)
+
+    async def update_room_to_room_fan_display_setting(
+        self,
+        controller_id: str | int,
+        device_port: int,
+        dev_name: str,
+        inside_room_name: str,
+        outside_room_name: str,
+        key_values: dict[str, int],
+    ):
+        """Sets display/panel settings (backlight, keytone/keypress sound, brightness) for
+        a room-to-room/through-wall fan (e.g. AC-TWT6, devType 33).
+
+        Confirmed via packet capture: these use a fundamentally different, much smaller
+        modeAndSetting payload than mode/fan-speed/power changes - built from the device's
+        own "devSetting" object (from getdevModeSettingList) rather than the full
+        ~172-field payload, plus a handful of identity fields (device/room names) that
+        getdevModeSettingList doesn't return, so the caller must supply them (they're
+        available from the cached controller properties).
+
+        Args:
+            controller_id: id of the controller
+            device_port: port of the device (always 0 for this device type)
+            dev_name: the controller's display name, as configured in the app
+            inside_room_name: the "inside" zone's room name, as configured in the app
+            outside_room_name: the "outside" zone's room name, as configured in the app
+            key_values: The key value pairs of settings to set
+        """
+        self.__ensure_logged_in()
+
+        headers = self.__create_headers(use_auth_token=True, use_min_version=True)
+        body = await self.__post(
+            API_URL_GET_DEV_MODE_SETTING, {"devId": controller_id, "port": device_port}, headers
+        )
+        existing_values = body["data"]
+
+        flattened = existing_values[DeviceControlKey.DEV_SETTING].copy()
+        flattened.update(existing_values)
+        flattened["devName"] = dev_name
+        flattened["insideRoomName"] = inside_room_name
+        flattened["outsideRoomName"] = outside_room_name
+
+        updated = self.__transfer_values(ROOM_TO_ROOM_FAN_DISPLAY_SETTING_KEYS, key_values, flattened)
+        updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR] = ROOM_TO_ROOM_FAN_DISPLAY_SETTING_ID_STR
+
+        _LOGGER.debug(
+            "Room-to-room fan display setting update: key_values=%s full_payload=%s",
+            key_values, json.dumps(updated, sort_keys=True),
+        )
 
         url = f"{API_URL_MODE_AND_SETTINGS}?{urlencode(updated)}"
         _ = await self.__put(url, headers)
