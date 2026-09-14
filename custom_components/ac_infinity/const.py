@@ -88,6 +88,11 @@ class ControllerPropertyKey:
     # Room-to-room/through-wall fans (e.g. AC-TWT6) report these instead of TEMPERATURE.
     INSIDE_TEMP = "insideTemp"
     OUTSIDE_TEMP = "outsideTemp"
+    # Also room-to-room fan specific; live under DEVICE_INFO, and required (along with
+    # DEVICE_NAME) when writing display/panel settings via
+    # ACInfinityClient.update_room_to_room_fan_display_setting.
+    INSIDE_ROOM_NAME = "insideRoomName"
+    OUTSIDE_ROOM_NAME = "outsideRoomName"
 
 
 class ControllerType:
@@ -189,6 +194,37 @@ class RoomToRoomFanExtraKeys:
     IS_ADV_TEMP_TRIGGER = "isAdvTempTrigger"
     LK_TYPE = "lkType"
     STANDARD_MODE = "standardMode"
+
+
+# Panel/display settings (backlight, keytone/keypress sound, brightness) use a
+# fundamentally DIFFERENT, much smaller modeAndSetting payload than mode/fan-speed/power
+# changes - confirmed via packet capture of a live keytoneSwitch toggle. It is built from
+# the device's own "devSetting" object (from getdevModeSettingList) rather than the full
+# ~172-field payload, plus a handful of identity fields, and uses its own fixed idStr.
+ROOM_TO_ROOM_FAN_DISPLAY_SETTING_ID_STR = "[32,33,37]"
+
+# Exact field set confirmed via capture for a display-setting (keytoneSwitch) write.
+ROOM_TO_ROOM_FAN_DISPLAY_SETTING_KEYS = frozenset({
+    "atType", "backlightSwitch", "devBh", "devBt", "devBth", "devBvpd", "devCh",
+    "devCompany", "devCsm1", "devCt", "devCt2", "devCth", "devCth2", "devId", "devLight",
+    "devName", "devTh", "devTt", "devTth", "deviceColor", "deviceLanguage", "ecOrTds",
+    "ecUnit", "externalPort", "hOsc", "hasBacklightSwitch", "hasKeytoneSwitch",
+    "humiCompare", "insideRoomName", "interchangeSensor", "isFlag", "isLeafBulitIn",
+    "isLeafSensor1", "isLeafSensor2", "isOnMinMaxTime", "isOpenDoseTime", "isShare",
+    "keytoneSwitch", "leafTempOutside", "loadType", "matterSta", "offDoseTime",
+    "offSpead", "onDoseTime", "onMaxTime", "onMinTime", "onSelfSpead", "onSpead",
+    "onTime", "onTimeSwitch", "otaUpdating", "outsideRoomName", "photocellSwitch",
+    "port", "powerState", "secFucDevEffect", "secFucDevtype", "secFucParamNums",
+    "secFucStatus", "sensorDisplay", "sensorFlag", "sensorOneType", "sensorPort",
+    "sensorTwoType", "sensorType", "settingMode", "subDeviceId", "subDeviceType",
+    "supportOta", "targetVpdSwitch", "tdsUnit", "tempCompare", "toward", "uuid",
+    "uuidType", "vOsc", "vpdCt", "vpdCth", "vpdSettingMode", "vpdTransition",
+    "zoneSensorType",
+})
+
+# The fields our own entities ever write that should route through the display-setting
+# path above rather than the general mode/control path.
+ROOM_TO_ROOM_FAN_DISPLAY_SETTING_TRIGGER_KEYS = frozenset({"backlightSwitch", "keytoneSwitch", "devLight"})
 
 
 class SensorPropertyKey:
