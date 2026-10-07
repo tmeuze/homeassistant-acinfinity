@@ -9,12 +9,13 @@ data_models.py, since mutating those shared dicts would leak state into
 unrelated test files.
 """
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 
 from custom_components.ac_infinity.client import ACInfinityClient
 from custom_components.ac_infinity.const import ControllerPropertyKey, ControllerType
-from custom_components.ac_infinity.core import ACInfinityController, ACInfinityService
+from custom_components.ac_infinity.core import ACInfinityController, ACInfinityData, ACInfinityService
 from custom_components.ac_infinity.sensor import CONTROLLER_DESCRIPTIONS
 
 DEVICE_ID = "1111111111111111111"
@@ -64,8 +65,8 @@ def _get_description(key: str):
 @pytest.fixture
 def controller_and_service():
     client = ACInfinityClient("http://unittest.abcxyz", "test@example.com", "hunter2")
-    service = ACInfinityService(client)
-    service._controller_properties = {DEVICE_ID: ROOM_TO_ROOM_FAN_PROPERTIES}
+    service = ACInfinityService(client, ACInfinityData())
+    service.data.controller_properties = {DEVICE_ID: ROOM_TO_ROOM_FAN_PROPERTIES}
     controller = ACInfinityController(ROOM_TO_ROOM_FAN_PROPERTIES)
     return controller, service
 
@@ -80,14 +81,14 @@ class TestRoomToRoomFan:
         """The stale top-level 'temperature' field must not be surfaced for this device type."""
         controller, service = controller_and_service
         description = _get_description(ControllerPropertyKey.TEMPERATURE)
-        entity = SimpleNamespace(data_key=description.key, ac_infinity=service)
+        entity = cast(Any, SimpleNamespace(data_key=description.key, service=service))
 
         assert description.suitable_fn(entity, controller) is False
 
     def test_inside_temperature_sensor_suitable_and_correct(self, controller_and_service):
         controller, service = controller_and_service
         description = _get_description(ControllerPropertyKey.INSIDE_TEMP)
-        entity = SimpleNamespace(data_key=description.key, ac_infinity=service)
+        entity = cast(Any, SimpleNamespace(data_key=description.key, service=service))
 
         assert description.suitable_fn(entity, controller) is True
         assert description.get_value_fn(entity, controller) == 23.46
@@ -95,7 +96,7 @@ class TestRoomToRoomFan:
     def test_outside_temperature_sensor_suitable_and_correct(self, controller_and_service):
         controller, service = controller_and_service
         description = _get_description(ControllerPropertyKey.OUTSIDE_TEMP)
-        entity = SimpleNamespace(data_key=description.key, ac_infinity=service)
+        entity = cast(Any, SimpleNamespace(data_key=description.key, service=service))
 
         assert description.suitable_fn(entity, controller) is True
         assert description.get_value_fn(entity, controller) == 22.60
@@ -103,24 +104,24 @@ class TestRoomToRoomFan:
     def test_inside_outside_not_suitable_for_non_room_to_room_controllers(self):
         """A regular 69 Pro controller (no insideTemp/outsideTemp) shouldn't get these sensors."""
         client = ACInfinityClient("http://unittest.abcxyz", "test@example.com", "hunter2")
-        service = ACInfinityService(client)
+        service = ACInfinityService(client, ACInfinityData())
 
         regular_properties = {
             **ROOM_TO_ROOM_FAN_PROPERTIES,
             "devType": ControllerType.UIS_69_PRO,
         }
-        service._controller_properties = {DEVICE_ID: regular_properties}
+        service.data.controller_properties = {DEVICE_ID: regular_properties}
         controller = ACInfinityController(regular_properties)
 
         inside_description = _get_description(ControllerPropertyKey.INSIDE_TEMP)
         outside_description = _get_description(ControllerPropertyKey.OUTSIDE_TEMP)
         temperature_description = _get_description(ControllerPropertyKey.TEMPERATURE)
 
-        entity = SimpleNamespace(data_key=inside_description.key, ac_infinity=service)
+        entity = cast(Any, SimpleNamespace(data_key=inside_description.key, service=service))
         assert inside_description.suitable_fn(entity, controller) is False
 
-        entity = SimpleNamespace(data_key=outside_description.key, ac_infinity=service)
+        entity = cast(Any, SimpleNamespace(data_key=outside_description.key, service=service))
         assert outside_description.suitable_fn(entity, controller) is False
 
-        entity = SimpleNamespace(data_key=temperature_description.key, ac_infinity=service)
+        entity = cast(Any, SimpleNamespace(data_key=temperature_description.key, service=service))
         assert temperature_description.suitable_fn(entity, controller) is True
