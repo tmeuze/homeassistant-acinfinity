@@ -16,6 +16,7 @@ from custom_components.ac_infinity.const import (
     ROOM_TO_ROOM_FAN_MODE_ID_STR,
     ROOM_TO_ROOM_FAN_MODE_MANUAL_STEADY_ID_STR,
     ROOM_TO_ROOM_FAN_POWER_ACTION_ID_STR,
+    ROOM_TO_ROOM_FAN_UNSENT_KEYS,
     RoomToRoomFanExtraKeys,
     RoomToRoomFanMode,
 )
@@ -215,8 +216,8 @@ class ACInfinityClient:
                 updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR] = "[16,22,23,40]"
             case AtType.VPD:
                 updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR] = "[16,81,32,98,99]"
-            case _:
-                raise ValueError(f"Unable to find setting id string - Unknown atType {at_type}")
+            case _: # AtTypes from plugable AI Controller Sensors
+                updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR] = "[16,97,32,98,99]"
 
         url = f"{API_URL_MODE_AND_SETTINGS}?{urlencode(updated)}"
         _ = await self.__put(url, headers)
@@ -263,6 +264,11 @@ class ACInfinityClient:
         ]
 
         updated = self.__transfer_values(device_control_keys, key_values, flattened)
+
+        # The official app never sends these on this device (confirmed via packet capture);
+        # they exist in the shared key set for other controller types.
+        for unused_key in ROOM_TO_ROOM_FAN_UNSENT_KEYS:
+            updated.pop(unused_key, None)
 
         at_type = updated[DeviceControlKey.AT_TYPE]
         if at_type not in ROOM_TO_ROOM_FAN_MODE_ID_STR:

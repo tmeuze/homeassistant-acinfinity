@@ -12,7 +12,7 @@ PLATFORMS = [
     Platform.TIME,
     Platform.SWITCH,
 ]
-HOST = "http://www.acinfinityserver.com"
+HOST = "https://www.acinfinityserver.com"
 
 DEFAULT_POLLING_INTERVAL = 10
 ISSUE_URL = "https://github.com/dalinicus/homeassistant-acinfinity/issues/new?template=Blank+issue"
@@ -64,6 +64,14 @@ class AtType:
     CYCLE = 6
     SCHEDULE = 7
     VPD = 8
+    CO2 = 9
+    CO2_FAN = 10
+    MOISTURE = 11
+    WATER_TEMP = 12
+    PH = 13
+    EC = 14
+    WATER_DETECT = 15
+
 
 
 # noinspection SpellCheckingInspection
@@ -352,6 +360,7 @@ class DeviceControlKey:
     HUMIDITY = "humidity"
     TARGET_HUMI = "targetHumi"
     TARGET_HUMI_SWITCH = "targetHumiSwitch"
+    PHOTOCELL_SWITCH = "photocellSwitch"
     TREND = "trend"
     T_TREND = "tTrend"
     H_TREND = "hTrend"
@@ -688,3 +697,14 @@ class ModeAndSettingKeys:
 SCHEDULE_DISABLED_VALUE = 65535  # Disabled
 SCHEDULE_MIDNIGHT_VALUE = 0  # 12:00am, default for start time
 SCHEDULE_EOD_VALUE = 1439  # 11:59pm, default for end time
+
+
+# Fields present in the shared ModeAndSettingKeys that the official app does NOT send
+# when writing room-to-room fan mode/power/value changes.
+ROOM_TO_ROOM_FAN_UNSENT_KEYS = frozenset({
+    "portParamData",
+    "secFucParams",
+    "sensorSettingStr",
+    "sensorTransBuffStr",
+    "subDeviceVersion",
+})

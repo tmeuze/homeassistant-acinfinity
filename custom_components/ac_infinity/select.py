@@ -13,9 +13,11 @@ from custom_components.ac_infinity.core import (
     ACInfinityController,
     ACInfinityControllerEntity,
     ACInfinityControllerReadWriteMixin,
-    ACInfinityDataUpdateCoordinator,
+    ACInfinityDeviceCoordinator,
+    ACInfinityDeviceListCoordinator,
     ACInfinityEntities,
     ACInfinityEntity,
+    ACInfinityEntryData,
     ACInfinityDevice,
     ACInfinityDeviceEntity,
     ACInfinityDeviceReadWriteMixin, enabled_fn_setting, enabled_fn_control,
@@ -55,7 +57,14 @@ MODE_OPTIONS = {
     AtType.TIMER_TO_OFF: "Timer to Off",
     AtType.CYCLE: "Cycle",
     AtType.SCHEDULE: "Schedule",
-    AtType.VPD: "VPD"
+    AtType.VPD: "VPD",
+    AtType.CO2: "CO2",
+    AtType.CO2_FAN: "CO2 Fan",
+    AtType.MOISTURE: "Moisture",
+    AtType.WATER_TEMP: "Water Temp",
+    AtType.PH: "pH",
+    AtType.EC: "EC",
+    AtType.WATER_DETECT: "Water Detect",
 }
 MODE_OPTIONS_REVERSE = {v: k for k, v in MODE_OPTIONS.items()}
 
@@ -130,7 +139,7 @@ def __suitable_fn_controller_setting_default(
     return (
         not controller.is_ai_controller
         and not controller.is_room_to_room_fan
-        and entity.ac_infinity.get_controller_setting_exists(
+        and entity.service.get_controller_setting_exists(
             controller.controller_id, entity.data_key
         )
     )
@@ -140,7 +149,7 @@ def __suitable_fn_device_control_default(entity: ACInfinityEntity, device: ACInf
     """For basic/AI UIS controllers only; room-to-room fans use their own dedicated entities."""
     return (
         not device.controller.is_room_to_room_fan
-        and entity.ac_infinity.get_device_control_exists(
+        and entity.service.get_device_control_exists(
             device.controller.controller_id, device.device_port, entity.data_key
         )
     )
@@ -151,7 +160,7 @@ def __suitable_fn_device_setting_basic_controller(entity: ACInfinityEntity, devi
     return (
         not device.controller.is_ai_controller
         and not device.controller.is_room_to_room_fan
-        and entity.ac_infinity.get_device_setting_exists(
+        and entity.service.get_device_setting_exists(
             device.controller.controller_id, device.device_port, entity.data_key
         )
     )
@@ -161,7 +170,7 @@ def __get_value_fn_outside_climate(
     entity: ACInfinityEntity, controller: ACInfinityController
 ):
     return OUTSIDE_CLIMATE_OPTIONS[
-        entity.ac_infinity.get_controller_setting(
+        entity.service.get_controller_setting(
             controller.controller_id, entity.data_key, 0
         )
     ]
@@ -169,14 +178,14 @@ def __get_value_fn_outside_climate(
 
 def __get_value_fn_active_mode(entity: ACInfinityEntity, device: ACInfinityDevice):
     return MODE_OPTIONS[
-        entity.ac_infinity.get_device_control(
+        entity.service.get_device_control(
             device.controller.controller_id, device.device_port, DeviceControlKey.AT_TYPE, 1
         )
     ]
 
 
 def __get_value_fn_room_to_room_mode(entity: ACInfinityEntity, device: ACInfinityDevice):
-    active_mode = entity.ac_infinity.get_device_control(
+    active_mode = entity.service.get_device_control(
         device.controller.controller_id, device.device_port, DeviceControlKey.AT_TYPE, RoomToRoomFanMode.MANUAL
     )
     # "Off" (atType=0) is display-only here - falls back to "Manual" for any other
@@ -188,7 +197,7 @@ def __get_value_fn_dynamic_response_type(
     entity: ACInfinityEntity, device: ACInfinityDevice
 ):
     return DYNAMIC_RESPONSE_OPTIONS[
-        entity.ac_infinity.get_device_setting(
+        entity.service.get_device_setting(
             device.controller.controller_id,
             device.device_port,
             AdvancedSettingsKey.DYNAMIC_RESPONSE_TYPE,
@@ -199,7 +208,7 @@ def __get_value_fn_dynamic_response_type(
 
 def __get_value_fn_device_load_type(entity: ACInfinityEntity, device: ACInfinityDevice):
     return DEVICE_LOAD_TYPE_OPTIONS[
-        entity.ac_infinity.get_device_setting(
+        entity.service.get_device_setting(
             device.controller.controller_id,
             device.device_port,
             AdvancedSettingsKey.DEVICE_LOAD_TYPE,
@@ -214,7 +223,7 @@ def __set_value_fn_outside_climate(
     if value not in OUTSIDE_CLIMATE_OPTIONS.values():
         raise ValueError(f"Invalid outside climate: {value}")
 
-    return entity.ac_infinity.update_controller_setting(
+    return entity.service.update_controller_setting(
         controller,
         entity.data_key,
         OUTSIDE_CLIMATE_OPTIONS_REVERSE[value],
@@ -227,7 +236,7 @@ def __set_value_fn_active_mode(
     if value not in MODE_OPTIONS.values():
         raise ValueError(f"Invalid mode: {value}")
 
-    return entity.ac_infinity.update_device_control(
+    return entity.service.update_device_control(
         device,
         DeviceControlKey.AT_TYPE,
         MODE_OPTIONS_REVERSE[value],
@@ -240,7 +249,7 @@ def __set_value_fn_room_to_room_mode(
     if value not in ROOM_TO_ROOM_MODE_OPTIONS.values():
         raise ValueError(f"Invalid room-to-room fan mode: {value}")
 
-    return entity.ac_infinity.update_device_control(
+    return entity.service.update_device_control(
         device,
         DeviceControlKey.AT_TYPE,
         ROOM_TO_ROOM_MODE_OPTIONS_REVERSE[value],
@@ -249,7 +258,7 @@ def __set_value_fn_room_to_room_mode(
 
 def __get_value_fn_setting_mode(entity: ACInfinityEntity, device: ACInfinityDevice):
     return SETTINGS_MODE_OPTIONS[
-        entity.ac_infinity.get_device_control(
+        entity.service.get_device_control(
             device.controller.controller_id, device.device_port, entity.data_key, 0
         )
     ]
@@ -258,7 +267,7 @@ def __get_value_fn_setting_mode(entity: ACInfinityEntity, device: ACInfinityDevi
 def __set_value_fn_setting_mode(
     entity: ACInfinityEntity, device: ACInfinityDevice, value: str
 ):
-    return entity.ac_infinity.update_device_control(
+    return entity.service.update_device_control(
         device,
         entity.data_key,
         SETTINGS_MODE_OPTIONS.index(value),
@@ -271,7 +280,7 @@ def __set_value_fn_dynamic_response_type(
     if value not in DYNAMIC_RESPONSE_OPTIONS.values():
         raise ValueError(f"Invalid dynamic response type: {value}")
 
-    return entity.ac_infinity.update_device_setting(
+    return entity.service.update_device_setting(
         device,
         AdvancedSettingsKey.DYNAMIC_RESPONSE_TYPE,
         DYNAMIC_RESPONSE_OPTIONS_REVERSE[value],
@@ -284,7 +293,7 @@ def __set_value_fn_device_load_type(
     if value not in DEVICE_LOAD_TYPE_OPTIONS.values():
         raise ValueError(f"Invalid device load type: {value}")
 
-    return entity.ac_infinity.update_device_setting(
+    return entity.service.update_device_setting(
         device,
         AdvancedSettingsKey.DEVICE_LOAD_TYPE,
         STANDARD_DEVICE_LOAD_TYPE_OPTIONS_REVERSE[value]
@@ -296,7 +305,7 @@ def __suitable_fn_room_to_room_fan_control(entity: ACInfinityEntity, device: ACI
     return (
         device.controller.is_room_to_room_fan
         and device.device_port == 0
-        and entity.ac_infinity.get_device_control_exists(
+        and entity.service.get_device_control_exists(
             device.controller.controller_id, device.device_port, entity.data_key
         )
     )
@@ -393,17 +402,19 @@ class ACInfinityControllerSelectEntity(ACInfinityControllerEntity, SelectEntity)
 
     def __init__(
         self,
-        coordinator: ACInfinityDataUpdateCoordinator,
+        list_coordinator: ACInfinityDeviceListCoordinator,
+        device_coordinator: ACInfinityDeviceCoordinator,
         description: ACInfinityControllerSelectEntityDescription,
         controller: ACInfinityController,
     ) -> None:
         super().__init__(
-            coordinator,
             controller,
             description.enabled_fn,
             description.suitable_fn,
             description.key,
             Platform.SELECT,
+            list_coordinator,
+            device_coordinator,
         )
         self.entity_description = description
 
@@ -418,7 +429,7 @@ class ACInfinityControllerSelectEntity(ACInfinityControllerEntity, SelectEntity)
             option,
         )
         await self.entity_description.set_value_fn(self, self.controller, option)
-        await self.coordinator.async_request_refresh()
+        self.notify_device_update()
 
 
 class ACInfinityDeviceSelectEntity(ACInfinityDeviceEntity, SelectEntity):
@@ -426,11 +437,12 @@ class ACInfinityDeviceSelectEntity(ACInfinityDeviceEntity, SelectEntity):
 
     def __init__(
         self,
-        coordinator: ACInfinityDataUpdateCoordinator,
+        list_coordinator: ACInfinityDeviceListCoordinator,
+        device_coordinator: ACInfinityDeviceCoordinator,
         description: ACInfinityDeviceSelectEntityDescription,
         device: ACInfinityDevice,
     ) -> None:
-        super().__init__(coordinator, device, description.enabled_fn, description.suitable_fn, description.at_type_fn, description.key, Platform.SELECT)
+        super().__init__(device, description.enabled_fn, description.suitable_fn, description.at_type_fn, description.key, Platform.SELECT, list_coordinator, device_coordinator)
         self.entity_description = description
 
     @property
@@ -444,7 +456,7 @@ class ACInfinityDeviceSelectEntity(ACInfinityDeviceEntity, SelectEntity):
             option,
         )
         await self.entity_description.set_value_fn(self, self.device_port, option)
-        await self.coordinator.async_request_refresh()
+        self.notify_device_update()
 
 
 async def async_setup_entry(
@@ -452,23 +464,25 @@ async def async_setup_entry(
 ) -> None:
     """Set up the AC Infinity Platform."""
 
-    coordinator: ACInfinityDataUpdateCoordinator = hass.data[DOMAIN][config.entry_id]
+    entry_data: ACInfinityEntryData = hass.data[DOMAIN][config.entry_id]
 
-    controllers = coordinator.ac_infinity.get_all_controller_properties()
+    controllers = entry_data.service.get_all_controller_properties()
 
     entities = ACInfinityEntities(config)
     for controller in controllers:
 
+        controller_device_coordinator = entry_data.device_coordinators[controller.controller_id]
         for controller_description in CONTROLLER_DESCRIPTIONS:
             controller_entity = ACInfinityControllerSelectEntity(
-                coordinator, controller_description, controller
+                entry_data.list_coordinator, controller_device_coordinator, controller_description, controller
             )
             entities.append_if_suitable(controller_entity)
 
         for device in controller.devices:
+            device_coordinator = entry_data.device_coordinators[controller.controller_id]
             for device_description in DEVICE_DESCRIPTIONS:
                 device_entity = ACInfinityDeviceSelectEntity(
-                    coordinator, device_description, device
+                    entry_data.list_coordinator, device_coordinator, device_description, device
                 )
                 entities.append_if_suitable(device_entity)
 
