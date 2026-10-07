@@ -697,3 +697,14 @@ class ModeAndSettingKeys:
 SCHEDULE_DISABLED_VALUE = 65535  # Disabled
 SCHEDULE_MIDNIGHT_VALUE = 0  # 12:00am, default for start time
 SCHEDULE_EOD_VALUE = 1439  # 11:59pm, default for end time
+
+
+# Fields present in the shared ModeAndSettingKeys that the official app does NOT send
+# when writing room-to-room fan mode/power/value changes.
+ROOM_TO_ROOM_FAN_UNSENT_KEYS = frozenset({
+    "portParamData",
+    "secFucParams",
+    "sensorSettingStr",
+    "sensorTransBuffStr",
+    "subDeviceVersion",
+})

@@ -16,6 +16,7 @@ from custom_components.ac_infinity.const import (
     ROOM_TO_ROOM_FAN_MODE_ID_STR,
     ROOM_TO_ROOM_FAN_MODE_MANUAL_STEADY_ID_STR,
     ROOM_TO_ROOM_FAN_POWER_ACTION_ID_STR,
+    ROOM_TO_ROOM_FAN_UNSENT_KEYS,
     RoomToRoomFanExtraKeys,
     RoomToRoomFanMode,
 )
@@ -263,6 +264,11 @@ class ACInfinityClient:
         ]
 
         updated = self.__transfer_values(device_control_keys, key_values, flattened)
+
+        # The official app never sends these on this device (confirmed via packet capture);
+        # they exist in the shared key set for other controller types.
+        for unused_key in ROOM_TO_ROOM_FAN_UNSENT_KEYS:
+            updated.pop(unused_key, None)
 
         at_type = updated[DeviceControlKey.AT_TYPE]
         if at_type not in ROOM_TO_ROOM_FAN_MODE_ID_STR:
