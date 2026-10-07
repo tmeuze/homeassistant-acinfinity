@@ -10,6 +10,7 @@ from datetime import datetime
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceEntry
 
 from .client import ACInfinityClient
 from .const import ConfigurationKey, DEFAULT_POLLING_INTERVAL, DOMAIN, PLATFORMS, HOST, ControllerPropertyKey, \
@@ -120,6 +121,26 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry
+) -> bool:
+    """Allow removing devices that are no longer reported by the AC Infinity API.
+
+    Devices that still back a live controller or port are refused so they can't be deleted by accident.
+    """
+    entry_data: ACInfinityEntryData | None = hass.data.get(DOMAIN, {}).get(config_entry.entry_id)
+    if entry_data is None:
+        return True
+
+    active_identifiers = set()
+    for controller in entry_data.service.get_all_controller_properties():
+        active_identifiers.add(controller.identifier)
+        for device in controller.devices:
+            active_identifiers.update(device.device_info.get("identifiers", set()))
+
+    return not (device_entry.identifiers & active_identifiers)
 
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
