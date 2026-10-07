@@ -14,7 +14,7 @@ import pytest
 
 from custom_components.ac_infinity.client import ACInfinityClient
 from custom_components.ac_infinity.const import ControllerPropertyKey, ControllerType
-from custom_components.ac_infinity.core import ACInfinityController, ACInfinityService
+from custom_components.ac_infinity.core import ACInfinityController, ACInfinityData, ACInfinityService
 from custom_components.ac_infinity.sensor import CONTROLLER_DESCRIPTIONS
 
 DEVICE_ID = "1111111111111111111"
@@ -64,8 +64,8 @@ def _get_description(key: str):
 @pytest.fixture
 def controller_and_service():
     client = ACInfinityClient("http://unittest.abcxyz", "test@example.com", "hunter2")
-    service = ACInfinityService(client)
-    service._controller_properties = {DEVICE_ID: ROOM_TO_ROOM_FAN_PROPERTIES}
+    service = ACInfinityService(client, ACInfinityData())
+    service.data.controller_properties = {DEVICE_ID: ROOM_TO_ROOM_FAN_PROPERTIES}
     controller = ACInfinityController(ROOM_TO_ROOM_FAN_PROPERTIES)
     return controller, service
 
@@ -103,13 +103,13 @@ class TestRoomToRoomFan:
     def test_inside_outside_not_suitable_for_non_room_to_room_controllers(self):
         """A regular 69 Pro controller (no insideTemp/outsideTemp) shouldn't get these sensors."""
         client = ACInfinityClient("http://unittest.abcxyz", "test@example.com", "hunter2")
-        service = ACInfinityService(client)
+        service = ACInfinityService(client, ACInfinityData())
 
         regular_properties = {
             **ROOM_TO_ROOM_FAN_PROPERTIES,
             "devType": ControllerType.UIS_69_PRO,
         }
-        service._controller_properties = {DEVICE_ID: regular_properties}
+        service.data.controller_properties = {DEVICE_ID: regular_properties}
         controller = ACInfinityController(regular_properties)
 
         inside_description = _get_description(ControllerPropertyKey.INSIDE_TEMP)
