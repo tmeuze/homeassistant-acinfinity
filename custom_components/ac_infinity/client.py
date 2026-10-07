@@ -281,6 +281,9 @@ class ACInfinityClient:
         is_power_action = DeviceControlKey.POWER_STATE in key_values
         if is_power_action:
             updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR] = ROOM_TO_ROOM_FAN_POWER_ACTION_ID_STR
+        elif set(key_values) == {DeviceControlKey.ON_SPEED} and at_type == previous_at_type:
+            # Max fan speed adjusted on its own, in any mode
+            updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR] = ROOM_TO_ROOM_FAN_MODE_MANUAL_STEADY_ID_STR
         elif at_type == RoomToRoomFanMode.MANUAL and at_type == previous_at_type:
             # Confirmed via capture: Manual mode is the one confirmed exception where
             # adjusting a value (fan speed) while already in the mode uses a different

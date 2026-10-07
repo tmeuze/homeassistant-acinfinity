@@ -63,6 +63,17 @@ class ACInfinityController:
         self._controller_type = controller_json[ControllerPropertyKey.DEVICE_TYPE]
         self._identifier = (DOMAIN, self._controller_id)
 
+        self._device_info = DeviceInfo(
+            identifiers={self._identifier},
+            name=self._controller_name,
+            manufacturer=MANUFACTURER,
+            hw_version=controller_json[ControllerPropertyKey.HW_VERSION],
+            sw_version=controller_json[ControllerPropertyKey.SW_VERSION],
+            model=self.__get_device_model_by_device_type(
+                controller_json[ControllerPropertyKey.DEVICE_TYPE]
+            ),
+        )
+
         devices = controller_json[ControllerPropertyKey.DEVICE_INFO][ControllerPropertyKey.PORTS] or []
         self._devices = [ACInfinityDevice(self, device)for device in devices]
 
@@ -78,17 +89,6 @@ class ACInfinityController:
                 DevicePropertyKey.REMAINING_TIME: 0,
             }
             self._devices = [ACInfinityDevice(self, synthetic_device)]
-
-        self._device_info = DeviceInfo(
-            identifiers={self._identifier},
-            name=self._controller_name,
-            manufacturer=MANUFACTURER,
-            hw_version=controller_json[ControllerPropertyKey.HW_VERSION],
-            sw_version=controller_json[ControllerPropertyKey.SW_VERSION],
-            model=self.__get_device_model_by_device_type(
-                controller_json[ControllerPropertyKey.DEVICE_TYPE]
-            ),
-        )
 
         # controller AI will have a sensor array.
         self._sensors = []
@@ -305,20 +305,18 @@ class ACInfinityDevice:
         self._device_port = device_json[DevicePropertyKey.PORT]
         self._device_name = device_json[DevicePropertyKey.NAME]
 
-        # Build device info. For synthetic devices (port_0), don't use via_device_id
-        # because the parent device may not be registered yet in the device registry.
-        device_info_kwargs = {
-            "identifiers": {(DOMAIN, f"{controller.controller_id}_{self._device_port}")},
-            "name": f"{controller.controller_name} {self.device_name}",
-            "manufacturer": MANUFACTURER,
-            "model": "Room to Room Fan (AC-TWT6)" if controller.is_room_to_room_fan else "UIS Enabled Device",
-        }
+        if controller.is_room_to_room_fan and self._device_port == 0:
+            # A room-to-room fan is a single physical unit: its controls (synthetic port 0) and its
+            # controller-level sensors belong on one device, not a separate "<name> Main" device.
+            self._device_info = controller.device_info
+            return
 
-        # Only use via_device_id for real ports (not synthetic port_0)
-        if self._device_port != 0:
-            device_info_kwargs["via_device_id"] = controller.identifier
-
-        self._device_info = DeviceInfo(**device_info_kwargs)
+        self._device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{controller.controller_id}_{self._device_port}")},
+            name=f"{controller.controller_name} {self.device_name}",
+            manufacturer=MANUFACTURER,
+            model="UIS Enabled Device",
+        )
 
     @property
     def controller(self) -> ACInfinityController:
@@ -1262,6 +1260,8 @@ class ACInfinityDeviceEntity(ACInfinityEntity):
     def device_info(self) -> DeviceInfo:
         """Returns the device info for the port entity"""
         device_info = self._device.device_info
+        if device_info is self._device.controller.device_info:
+            return device_info  # device shares the controller's own device (room-to-room fans)
         via_device_id = self._resolve_via_device_id(self._device.controller.identifier)
         if via_device_id is not None:
             device_info = DeviceInfo({**device_info, "via_device_id": via_device_id})
