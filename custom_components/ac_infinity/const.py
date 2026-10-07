@@ -180,6 +180,8 @@ ROOM_TO_ROOM_FAN_MODE_ID_STR = {
 
 # Confirmed via capture: used whenever the request is specifically changing powerState,
 # regardless of atType (observed identically for both powering off and powering back on).
+# Direction (which room air moves toward) is written on its own with this idStr.
+ROOM_TO_ROOM_FAN_DIRECTION_ID_STR = "[17]"
 ROOM_TO_ROOM_FAN_POWER_ACTION_ID_STR = "[22]"
 
 # Confirmed via capture: used instead of ROOM_TO_ROOM_FAN_MODE_ID_STR[MANUAL] ("[16]")
