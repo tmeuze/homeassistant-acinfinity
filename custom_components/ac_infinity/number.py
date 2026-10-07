@@ -332,6 +332,21 @@ def __set_value_fn_device_control_default(
     return entity.service.update_device_control(device, entity.data_key, int(value or 0))
 
 
+def __set_value_fn_room_to_room_target_temp(
+    entity: ACInfinityEntity, device: ACInfinityDevice, value: float
+):
+    """Target temperature is held natively in °F; the API also expects the matching whole °C."""
+    fahrenheit = int(round(value or 0))
+    celsius = int(round((fahrenheit - 32) * 5 / 9))
+    return entity.service.update_device_controls(
+        device,
+        {
+            DeviceControlKey.AUTO_TEMP_HIGH_TRIGGER_F: fahrenheit,
+            DeviceControlKey.AUTO_TEMP_HIGH_TRIGGER: celsius,
+        },
+    )
+
+
 def __set_value_fn_room_to_room_timer_minutes(
     entity: ACInfinityEntity, device: ACInfinityDevice, value: float
 ):
@@ -1251,24 +1266,10 @@ DEVICE_DESCRIPTIONS: list[ACInfinityDeviceNumberEntityDescription] = [
         suitable_fn=__suitable_fn_room_to_room_fan_control,
         get_value_fn=__get_value_fn_device_control_default,
         set_value_fn=__set_value_fn_device_control_default,
-        at_type_fn=lambda at_type: at_type == RoomToRoomFanMode.MANUAL,
+        at_type_fn=lambda at_type: True,  # max speed the controller may reach; applies in every mode
     ),
-    ACInfinityDeviceNumberEntityDescription(
-        key=DeviceControlKey.AUTO_TEMP_HIGH_TRIGGER,
-        device_class=NumberDeviceClass.TEMPERATURE,
-        mode=NumberMode.BOX,
-        native_min_value=0,
-        native_max_value=40,
-        native_step=1,
-        icon=None,
-        translation_key="room_to_room_target_temp_c",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        enabled_fn=enabled_fn_control,
-        suitable_fn=__suitable_fn_room_to_room_fan_control,
-        get_value_fn=__get_value_fn_device_control_default,
-        set_value_fn=__set_value_fn_device_control_default,
-        at_type_fn=lambda at_type: at_type == RoomToRoomFanMode.TEMP_TARGET,
-    ),
+    # Single target-temperature entity, stored natively in °F; Home Assistant converts display and
+    # input to the user's unit system. The setter writes both the °F and °C fields the API expects.
     ACInfinityDeviceNumberEntityDescription(
         key=DeviceControlKey.AUTO_TEMP_HIGH_TRIGGER_F,
         device_class=NumberDeviceClass.TEMPERATURE,
@@ -1277,12 +1278,12 @@ DEVICE_DESCRIPTIONS: list[ACInfinityDeviceNumberEntityDescription] = [
         native_max_value=104,
         native_step=1,
         icon=None,
-        translation_key="room_to_room_target_temp_f",
+        translation_key="room_to_room_target_temp",
         native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
         enabled_fn=enabled_fn_control,
         suitable_fn=__suitable_fn_room_to_room_fan_control,
         get_value_fn=__get_value_fn_device_control_default,
-        set_value_fn=__set_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_room_to_room_target_temp,
         at_type_fn=lambda at_type: at_type == RoomToRoomFanMode.TEMP_TARGET,
     ),
     # AI mode's temperature differential. Confirmed via capture: this reuses the UIS

@@ -213,11 +213,8 @@
       "room_to_room_fan_speed": {
         "name": "Fan Speed"
       },
-      "room_to_room_target_temp_c": {
-        "name": "Temperature Target (°C)"
-      },
-      "room_to_room_target_temp_f": {
-        "name": "Temperature Target (°F)"
+      "room_to_room_target_temp": {
+        "name": "Temperature Target"
       },
       "room_to_room_ai_differential": {
         "name": "AI Temperature Differential"
