@@ -9,6 +9,7 @@ data_models.py, since mutating those shared dicts would leak state into
 unrelated test files.
 """
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 
@@ -80,14 +81,14 @@ class TestRoomToRoomFan:
         """The stale top-level 'temperature' field must not be surfaced for this device type."""
         controller, service = controller_and_service
         description = _get_description(ControllerPropertyKey.TEMPERATURE)
-        entity = SimpleNamespace(data_key=description.key, service=service)
+        entity = cast(Any, SimpleNamespace(data_key=description.key, service=service))
 
         assert description.suitable_fn(entity, controller) is False
 
     def test_inside_temperature_sensor_suitable_and_correct(self, controller_and_service):
         controller, service = controller_and_service
         description = _get_description(ControllerPropertyKey.INSIDE_TEMP)
-        entity = SimpleNamespace(data_key=description.key, service=service)
+        entity = cast(Any, SimpleNamespace(data_key=description.key, service=service))
 
         assert description.suitable_fn(entity, controller) is True
         assert description.get_value_fn(entity, controller) == 23.46
@@ -95,7 +96,7 @@ class TestRoomToRoomFan:
     def test_outside_temperature_sensor_suitable_and_correct(self, controller_and_service):
         controller, service = controller_and_service
         description = _get_description(ControllerPropertyKey.OUTSIDE_TEMP)
-        entity = SimpleNamespace(data_key=description.key, service=service)
+        entity = cast(Any, SimpleNamespace(data_key=description.key, service=service))
 
         assert description.suitable_fn(entity, controller) is True
         assert description.get_value_fn(entity, controller) == 22.60
@@ -116,11 +117,11 @@ class TestRoomToRoomFan:
         outside_description = _get_description(ControllerPropertyKey.OUTSIDE_TEMP)
         temperature_description = _get_description(ControllerPropertyKey.TEMPERATURE)
 
-        entity = SimpleNamespace(data_key=inside_description.key, service=service)
+        entity = cast(Any, SimpleNamespace(data_key=inside_description.key, service=service))
         assert inside_description.suitable_fn(entity, controller) is False
 
-        entity = SimpleNamespace(data_key=outside_description.key, service=service)
+        entity = cast(Any, SimpleNamespace(data_key=outside_description.key, service=service))
         assert outside_description.suitable_fn(entity, controller) is False
 
-        entity = SimpleNamespace(data_key=temperature_description.key, service=service)
+        entity = cast(Any, SimpleNamespace(data_key=temperature_description.key, service=service))
         assert temperature_description.suitable_fn(entity, controller) is True

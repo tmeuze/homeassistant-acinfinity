@@ -341,7 +341,7 @@ class ACInfinityClient:
         flattened["insideRoomName"] = inside_room_name
         flattened["outsideRoomName"] = outside_room_name
 
-        updated = self.__transfer_values(ROOM_TO_ROOM_FAN_DISPLAY_SETTING_KEYS, key_values, flattened)
+        updated = self.__transfer_values(list(ROOM_TO_ROOM_FAN_DISPLAY_SETTING_KEYS), key_values, flattened)
         updated[ModeAndSettingKeys.MODE_AND_SETTING_ID_STR] = ROOM_TO_ROOM_FAN_DISPLAY_SETTING_ID_STR
 
         _LOGGER.debug(
