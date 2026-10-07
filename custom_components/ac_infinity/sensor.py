@@ -12,13 +12,13 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    CONCENTRATION_PARTS_PER_MILLION,
     PERCENTAGE,
     Platform,
     UnitOfConductivity,
     UnitOfPressure,
     UnitOfTemperature,
     UnitOfTime,
+    UnitOfRatio,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import StateType
@@ -27,9 +27,10 @@ from custom_components.ac_infinity.core import (
     ACInfinityController,
     ACInfinityControllerEntity,
     ACInfinityControllerReadOnlyMixin,
-    ACInfinityDataUpdateCoordinator,
+    ACInfinityDeviceListCoordinator,
     ACInfinityEntities,
     ACInfinityEntity,
+    ACInfinityEntryData,
     ACInfinityDevice,
     ACInfinityDeviceEntity,
     ACInfinityDeviceReadOnlyMixin,
@@ -100,7 +101,7 @@ def __suitable_fn_controller_property_default(
     return (
         not controller.is_ai_controller
         and not controller.is_room_to_room_fan
-        and entity.ac_infinity.get_controller_property_exists(
+        and entity.service.get_controller_property_exists(
             controller.controller_id, entity.data_key
         )
     )
@@ -121,18 +122,18 @@ def __suitable_fn_controller_temperature(
 def __suitable_fn_room_to_room_zone_temperature(
     entity: ACInfinityEntity, controller: ACInfinityController
 ):
-    return controller.is_room_to_room_fan and entity.ac_infinity.get_controller_property_exists(
+    return controller.is_room_to_room_fan and entity.service.get_controller_property_exists(
         controller.controller_id, entity.data_key
     )
 
 
 def __suitable_fn_sensor_default(entity: ACInfinityEntity, sensor: ACInfinitySensor):
-    return entity.ac_infinity.get_sensor_property_exists(
+    return entity.service.get_sensor_property_exists(
         sensor.controller.controller_id,
         sensor.sensor_port,
         sensor.sensor_type,
         SensorPropertyKey.SENSOR_PRECISION,
-    ) and entity.ac_infinity.get_sensor_property_exists(
+    ) and entity.service.get_sensor_property_exists(
         sensor.controller.controller_id,
         sensor.sensor_port,
         sensor.sensor_type,
@@ -143,7 +144,7 @@ def __suitable_fn_sensor_default(entity: ACInfinityEntity, sensor: ACInfinitySen
 def __get_value_fn_sensor_value_default(
     entity: ACInfinityEntity, sensor: ACInfinitySensor
 ):
-    precision = entity.ac_infinity.get_sensor_property(
+    precision = entity.service.get_sensor_property(
         sensor.controller.controller_id,
         sensor.sensor_port,
         sensor.sensor_type,
@@ -151,7 +152,7 @@ def __get_value_fn_sensor_value_default(
         1,
     )
 
-    data = entity.ac_infinity.get_sensor_property(
+    data = entity.service.get_sensor_property(
         sensor.controller.controller_id,
         sensor.sensor_port,
         sensor.sensor_type,
@@ -167,19 +168,19 @@ def __suitable_fn_sensor_temperature(
     entity: ACInfinityEntity, sensor: ACInfinitySensor
 ):
     return (
-        entity.ac_infinity.get_sensor_property_exists(
+        entity.service.get_sensor_property_exists(
             sensor.controller.controller_id,
             sensor.sensor_port,
             sensor.sensor_type,
             SensorPropertyKey.SENSOR_PRECISION,
         )
-        and entity.ac_infinity.get_sensor_property_exists(
+        and entity.service.get_sensor_property_exists(
             sensor.controller.controller_id,
             sensor.sensor_port,
             sensor.sensor_type,
             SensorPropertyKey.SENSOR_DATA,
         )
-        and entity.ac_infinity.get_sensor_property_exists(
+        and entity.service.get_sensor_property_exists(
             sensor.controller.controller_id,
             sensor.sensor_port,
             sensor.sensor_type,
@@ -191,7 +192,7 @@ def __suitable_fn_sensor_temperature(
 def __get_value_fn_sensor_value_temperature(
     entity: ACInfinityEntity, sensor: ACInfinitySensor
 ):
-    precision = entity.ac_infinity.get_sensor_property(
+    precision = entity.service.get_sensor_property(
         sensor.controller.controller_id,
         sensor.sensor_port,
         sensor.sensor_type,
@@ -199,7 +200,7 @@ def __get_value_fn_sensor_value_temperature(
         1,
     )
 
-    data = entity.ac_infinity.get_sensor_property(
+    data = entity.service.get_sensor_property(
         sensor.controller.controller_id,
         sensor.sensor_port,
         sensor.sensor_type,
@@ -207,7 +208,7 @@ def __get_value_fn_sensor_value_temperature(
         0,
     )
 
-    unit = entity.ac_infinity.get_sensor_property(
+    unit = entity.service.get_sensor_property(
         sensor.controller.controller_id,
         sensor.sensor_port,
         sensor.sensor_type,
@@ -220,7 +221,7 @@ def __get_value_fn_sensor_value_temperature(
 
 
 def __suitable_fn_device_property_default(entity: ACInfinityEntity, device: ACInfinityDevice):
-    return entity.ac_infinity.get_device_property_exists(
+    return entity.service.get_device_property_exists(
         device.controller.controller_id, device.device_port, entity.data_key
     )
 
@@ -228,7 +229,7 @@ def __suitable_fn_device_property_default(entity: ACInfinityEntity, device: ACIn
 def __get_value_fn_device_property_default(
     entity: ACInfinityEntity, device: ACInfinityDevice
 ):
-    return entity.ac_infinity.get_device_property(
+    return entity.service.get_device_property(
         device.controller.controller_id, device.device_port, entity.data_key, 0
     )
 
@@ -238,7 +239,7 @@ def __get_value_fn_floating_point_as_int(
 ):
     # value stored as an integer, but represents a 2 digit precision float
     return (
-        entity.ac_infinity.get_controller_property(
+        entity.service.get_controller_property(
             controller.controller_id, entity.data_key, 0
         )
         / 100
@@ -248,11 +249,11 @@ def __get_value_fn_floating_point_as_int(
 def __get_next_mode_change_timestamp(
     entity: ACInfinityEntity, device: ACInfinityDevice
 ) -> datetime | None:
-    remaining_seconds = entity.ac_infinity.get_device_property(
+    remaining_seconds = entity.service.get_device_property(
         device.controller.controller_id, device.device_port, DevicePropertyKey.REMAINING_TIME, 0
     )
 
-    timezone = entity.ac_infinity.get_controller_property(
+    timezone = entity.service.get_controller_property(
         device.controller.controller_id, ControllerPropertyKey.TIME_ZONE
     )
 
@@ -426,7 +427,7 @@ SENSOR_DESCRIPTIONS: dict[int, ACInfinitySensorSensorEntityDescription] = {
         key=SensorReferenceKey.CO2_SENSOR,
         device_class=SensorDeviceClass.CO2,
         state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
+        native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
         suggested_unit_of_measurement=None,
         icon=None,  # default
         translation_key="co2_sensor",
@@ -498,7 +499,7 @@ SENSOR_DESCRIPTIONS: dict[int, ACInfinitySensorSensorEntityDescription] = {
         key=SensorReferenceKey.HYDRO_TDS,
         device_class=None,
         state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
+        native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
         suggested_unit_of_measurement=None,
         icon=MdiIcon.WATER_OPACITY,
         translation_key="hydro_tds_sensor",
@@ -589,17 +590,17 @@ class ACInfinityControllerSensorEntity(ACInfinityControllerEntity, SensorEntity)
 
     def __init__(
         self,
-        coordinator: ACInfinityDataUpdateCoordinator,
+        list_coordinator: ACInfinityDeviceListCoordinator,
         description: ACInfinityControllerSensorEntityDescription,
         controller: ACInfinityController,
     ) -> None:
         super().__init__(
-            coordinator,
             controller,
             description.enabled_fn,
             description.suitable_fn,
             description.key,
             Platform.SENSOR,
+            list_coordinator,
         )
         self.entity_description = description
 
@@ -613,17 +614,17 @@ class ACInfinitySensorSensorEntity(ACInfinitySensorEntity, SensorEntity):
 
     def __init__(
         self,
-        coordinator: ACInfinityDataUpdateCoordinator,
+        list_coordinator: ACInfinityDeviceListCoordinator,
         description: ACInfinitySensorSensorEntityDescription,
         sensor: ACInfinitySensor,
     ) -> None:
         super().__init__(
-            coordinator,
             sensor,
             description.enabled_fn,
             description.suitable_fn,
             description.key,
             Platform.SENSOR,
+            list_coordinator,
         )
         self.entity_description = description
 
@@ -637,12 +638,12 @@ class ACInfinityDeviceSensorEntity(ACInfinityDeviceEntity, SensorEntity):
 
     def __init__(
         self,
-        coordinator: ACInfinityDataUpdateCoordinator,
+        list_coordinator: ACInfinityDeviceListCoordinator,
         description: ACInfinityDeviceSensorEntityDescription,
         device: ACInfinityDevice,
     ) -> None:
         super().__init__(
-            coordinator, device, description.enabled_fn, description.suitable_fn, None, description.key, Platform.SENSOR
+            device, description.enabled_fn, description.suitable_fn, None, description.key, Platform.SENSOR, list_coordinator
         )
         self.entity_description = description
 
@@ -656,15 +657,15 @@ async def async_setup_entry(
 ) -> None:
     """Set up the AC Infinity Platform."""
 
-    coordinator: ACInfinityDataUpdateCoordinator = hass.data[DOMAIN][config.entry_id]
+    entry_data: ACInfinityEntryData = hass.data[DOMAIN][config.entry_id]
 
-    controllers = coordinator.ac_infinity.get_all_controller_properties()
+    controllers = entry_data.service.get_all_controller_properties()
 
     entities = ACInfinityEntities(config)
     for controller in controllers:
         for controller_description in CONTROLLER_DESCRIPTIONS:
             controller_entity = ACInfinityControllerSensorEntity(
-                coordinator, controller_description, controller
+                entry_data.list_coordinator, controller_description, controller
             )
             entities.append_if_suitable(controller_entity)
 
@@ -672,7 +673,7 @@ async def async_setup_entry(
             if sensor.sensor_type in SENSOR_DESCRIPTIONS:
                 sensor_description = SENSOR_DESCRIPTIONS[sensor.sensor_type]
                 sensor_entity = ACInfinitySensorSensorEntity(
-                    coordinator, sensor_description, sensor
+                    entry_data.list_coordinator, sensor_description, sensor
                 )
                 entities.append_if_suitable(sensor_entity)
             elif sensor.sensor_type not in SensorType.__dict__.values():
@@ -685,7 +686,7 @@ async def async_setup_entry(
         for device in controller.devices:
             for device_description in DEVICE_DESCRIPTIONS:
                 device_entity = ACInfinityDeviceSensorEntity(
-                    coordinator, device_description, device
+                    entry_data.list_coordinator, device_description, device
                 )
                 entities.append_if_suitable(device_entity)
 

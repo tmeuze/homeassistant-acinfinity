@@ -23,9 +23,11 @@ from custom_components.ac_infinity.const import (
     RoomToRoomFanMode,
 )
 from custom_components.ac_infinity.core import (
-    ACInfinityDataUpdateCoordinator,
+    ACInfinityDeviceCoordinator,
+    ACInfinityDeviceListCoordinator,
     ACInfinityEntities,
     ACInfinityEntity,
+    ACInfinityEntryData,
     ACInfinityDevice,
     ACInfinityDeviceEntity,
     ACInfinityDeviceReadWriteMixin, enabled_fn_control, enabled_fn_setting,
@@ -68,7 +70,7 @@ def __suitable_fn_device_setting_default(entity: ACInfinityEntity, device: ACInf
     return (
         not device.controller.is_ai_controller
         and not device.controller.is_room_to_room_fan
-        and entity.ac_infinity.get_device_setting_exists(
+        and entity.service.get_device_setting_exists(
             device.controller.controller_id, device.device_port, entity.data_key
         )
     )
@@ -78,14 +80,23 @@ def __suitable_fn_device_control_default(entity: ACInfinityEntity, device: ACInf
     """For basic/AI UIS controllers only; room-to-room fans use their own dedicated entities."""
     return (
         not device.controller.is_room_to_room_fan
-        and entity.ac_infinity.get_device_control_exists(
+        and entity.service.get_device_control_exists(
+            device.controller.controller_id, device.device_port, entity.data_key
+        )
+    )
+
+
+def __suitable_fn_device_control_ai_only(entity: ACInfinityEntity, device: ACInfinityDevice):
+    return (
+        device.controller.is_ai_controller
+        and entity.service.get_device_control_exists(
             device.controller.controller_id, device.device_port, entity.data_key
         )
     )
 
 
 def __get_value_fn_device_control_default(entity: ACInfinityEntity, device: ACInfinityDevice):
-    return entity.ac_infinity.get_device_control(
+    return entity.service.get_device_control(
         device.controller.controller_id, device.device_port, entity.data_key, 0
     )
 
@@ -95,21 +106,21 @@ def __suitable_fn_room_to_room_fan_control(entity: ACInfinityEntity, device: ACI
     return (
         device.controller.is_room_to_room_fan
         and device.device_port == 0
-        and entity.ac_infinity.get_device_control_exists(
+        and entity.service.get_device_control_exists(
             device.controller.controller_id, device.device_port, entity.data_key
         )
     )
 
 
 def __get_value_fn_device_setting_default(entity: ACInfinityEntity, device: ACInfinityDevice):
-    return entity.ac_infinity.get_device_setting(
+    return entity.service.get_device_setting(
         device.controller.controller_id, device.device_port, entity.data_key, 0
     )
 
 
 def __get_value_fn_schedule_enabled(entity: ACInfinityEntity, device: ACInfinityDevice):
     return (
-        entity.ac_infinity.get_device_control(
+        entity.service.get_device_control(
             device.controller.controller_id,
             device.device_port,
             entity.data_key,
@@ -122,7 +133,7 @@ def __get_value_fn_schedule_enabled(entity: ACInfinityEntity, device: ACInfinity
 def __set_value_fn_device_control_default(
     entity: ACInfinityEntity, device: ACInfinityDevice, value: int
 ):
-    return entity.ac_infinity.update_device_control(
+    return entity.service.update_device_control(
         device, entity.data_key, value
     )
 
@@ -130,7 +141,7 @@ def __set_value_fn_device_control_default(
 def __set_value_fn_device_setting_default(
     entity: ACInfinityEntity, device: ACInfinityDevice, value: int
 ):
-    return entity.ac_infinity.update_device_setting(
+    return entity.service.update_device_setting(
         device, entity.data_key, value
     )
 
@@ -239,6 +250,136 @@ DEVICE_DESCRIPTIONS: list[ACInfinityDeviceSwitchEntityDescription] = [
         get_value_fn=__get_value_fn_device_control_default,
         set_value_fn=__set_value_fn_device_control_default,
         at_type_fn=lambda at_type: at_type == AtType.AUTO,
+    ),
+    ACInfinityDeviceSwitchEntityDescription(
+        key=DeviceControlKey.WATER_LEVEL_LOW_SWITCH,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=None,  # default
+        translation_key="water_detection_enabled",
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_device_control_default,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: at_type == AtType.WATER_DETECT,
+    ),
+    ACInfinityDeviceSwitchEntityDescription(
+        key=DeviceControlKey.PHOTOCELL_SWITCH,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=None,  # default
+        translation_key="photocell_enabled",
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_device_control_ai_only,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: at_type == AtType.CO2,
+    ),
+    ACInfinityDeviceSwitchEntityDescription(
+        key=DeviceControlKey.CO2_LOW_SWITCH,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=None,  # default
+        translation_key="co2_low_enabled",
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_device_control_ai_only,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: at_type == AtType.CO2,
+    ),
+    ACInfinityDeviceSwitchEntityDescription(
+        key=DeviceControlKey.CO2_FAN_HIGH_SWITCH,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=None,  # default
+        translation_key="co2_fan_high_enabled",
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_device_control_ai_only,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: at_type == AtType.CO2_FAN,
+    ),
+    ACInfinityDeviceSwitchEntityDescription(
+        key=DeviceControlKey.MOISTURE_LOW_SWITCH,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=None,  # default
+        translation_key="moisture_low_enabled",
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_device_control_ai_only,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: at_type == AtType.MOISTURE,
+    ),
+    ACInfinityDeviceSwitchEntityDescription(
+        key=DeviceControlKey.EC_TDS_LOW_SWITCH_EC,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=None,  # default
+        translation_key="ec_tds_low_enabled",
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_device_control_ai_only,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: at_type == AtType.EC,
+    ),
+    ACInfinityDeviceSwitchEntityDescription(
+        key=DeviceControlKey.PH_HIGH_SWITCH,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=None,  # default
+        translation_key="ph_high_enabled",
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_device_control_ai_only,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: at_type == AtType.PH,
+    ),
+    ACInfinityDeviceSwitchEntityDescription(
+        key=DeviceControlKey.PH_LOW_SWITCH,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=None,  # default
+        translation_key="ph_low_enabled",
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_device_control_ai_only,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: at_type == AtType.PH,
+    ),
+    ACInfinityDeviceSwitchEntityDescription(
+        key=DeviceControlKey.WATER_TEMP_HIGH_SWITCH,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=None,  # default
+        translation_key="water_temp_high_enabled",
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_device_control_ai_only,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: at_type == AtType.WATER_TEMP,
+    ),
+    ACInfinityDeviceSwitchEntityDescription(
+        key=DeviceControlKey.WATER_TEMP_LOW_SWITCH,
+        device_class=SwitchDeviceClass.SWITCH,
+        on_value=1,
+        off_value=0,
+        icon=None,  # default
+        translation_key="water_temp_low_enabled",
+        enabled_fn=enabled_fn_control,
+        suitable_fn=__suitable_fn_device_control_ai_only,
+        get_value_fn=__get_value_fn_device_control_default,
+        set_value_fn=__set_value_fn_device_control_default,
+        at_type_fn=lambda at_type: at_type == AtType.WATER_TEMP,
     ),
     ACInfinityDeviceSwitchEntityDescription(
         key=DeviceControlKey.TARGET_HUMI_SWITCH,
@@ -359,12 +500,13 @@ class ACInfinityDeviceSwitchEntity(ACInfinityDeviceEntity, SwitchEntity):
 
     def __init__(
         self,
-        coordinator: ACInfinityDataUpdateCoordinator,
+        list_coordinator: ACInfinityDeviceListCoordinator,
+        device_coordinator: ACInfinityDeviceCoordinator,
         description: ACInfinityDeviceSwitchEntityDescription,
         device: ACInfinityDevice,
     ) -> None:
         super().__init__(
-            coordinator, device, description.enabled_fn, description.suitable_fn, description.at_type_fn, description.key, Platform.SWITCH
+            device, description.enabled_fn, description.suitable_fn, description.at_type_fn, description.key, Platform.SWITCH, list_coordinator, device_coordinator
         )
         self.entity_description = description
 
@@ -379,7 +521,7 @@ class ACInfinityDeviceSwitchEntity(ACInfinityDeviceEntity, SwitchEntity):
         await self.entity_description.set_value_fn(
             self, self.device_port, self.entity_description.on_value
         )
-        await self.coordinator.async_request_refresh()
+        self.notify_device_update()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         _LOGGER.info(
@@ -388,23 +530,24 @@ class ACInfinityDeviceSwitchEntity(ACInfinityDeviceEntity, SwitchEntity):
         await self.entity_description.set_value_fn(
             self, self.device_port, self.entity_description.off_value
         )
-        await self.coordinator.async_request_refresh()
+        self.notify_device_update()
 
 
 async def async_setup_entry(
     hass: HomeAssistant, config: ConfigEntry, add_entities_callback
 ) -> None:
     """Set up the AC Infinity Platform."""
-    coordinator: ACInfinityDataUpdateCoordinator = hass.data[DOMAIN][config.entry_id]
+    entry_data: ACInfinityEntryData = hass.data[DOMAIN][config.entry_id]
 
-    controllers = coordinator.ac_infinity.get_all_controller_properties()
+    controllers = entry_data.service.get_all_controller_properties()
 
     entities = ACInfinityEntities(config)
     for controller in controllers:
 
         for device in controller.devices:
+            device_coordinator = entry_data.device_coordinators[controller.controller_id]
             for description in DEVICE_DESCRIPTIONS:
-                entity = ACInfinityDeviceSwitchEntity(coordinator, description, device)
+                entity = ACInfinityDeviceSwitchEntity(entry_data.list_coordinator, device_coordinator, description, device)
                 entities.append_if_suitable(entity)
 
     add_entities_callback(entities)
